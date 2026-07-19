@@ -1,0 +1,646 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BX-80 ボクシング電卓</title>
+<style>
+  :root{
+    --pg-bg:#e8e5dc;
+    --pg-ink:#4a473f;
+    --pg-sub:#8a867a;
+    /* device (fixed, single visual world) */
+    --body:#25252b; --body-hi:#34343d; --body-lo:#1a1a1f;
+    --plate:#c7cad0; --plate-ink:#2b2b31;
+    --bezel:#131316;
+    --lcd:#a9b79b; --lcd-deep:#9aa88c;
+    --seg:#1d2b21;
+    --ghost:rgba(29,43,33,.075);
+    --print:rgba(29,43,33,.38);
+    --key:#3a3a43; --key-hi:#4a4a55; --key-ink:#f1f1f4;
+    --key-red:#b8402c; --key-red-hi:#cf5138;
+    --legend:#e0654d;
+    --brand-red:#c8442e;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --pg-bg:#15161a; --pg-ink:#c9c6bc; --pg-sub:#7c7970; }
+  }
+  :root[data-theme="dark"]{ --pg-bg:#15161a; --pg-ink:#c9c6bc; --pg-sub:#7c7970; }
+  :root[data-theme="light"]{ --pg-bg:#e8e5dc; --pg-ink:#4a473f; --pg-sub:#8a867a; }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0; min-height:100vh;
+    background:var(--pg-bg);
+    background-image:radial-gradient(ellipse 120% 80% at 50% 0%, rgba(255,255,255,.06), transparent 60%);
+    display:flex; flex-direction:column; align-items:center;
+    font-family:"Helvetica Neue",Helvetica,Arial,"Hiragino Kaku Gothic ProN",Meiryo,sans-serif;
+    color:var(--pg-ink);
+    padding:28px 12px 48px;
+  }
+  .strap{
+    font-size:11px; letter-spacing:.28em; text-transform:uppercase;
+    color:var(--pg-sub); margin:0 0 16px; text-align:center;
+  }
+
+  /* ============ DEVICE ============ */
+  .device{
+    width:min(400px,96vw);
+    background:linear-gradient(160deg,var(--body-hi) 0%,var(--body) 30%,var(--body) 70%,var(--body-lo) 100%);
+    border-radius:18px;
+    padding:14px 16px 20px;
+    box-shadow:
+      0 2px 0 rgba(255,255,255,.07) inset,
+      0 -3px 8px rgba(0,0,0,.5) inset,
+      0 18px 40px rgba(0,0,0,.35),
+      0 4px 10px rgba(0,0,0,.25);
+    user-select:none; -webkit-user-select:none;
+    touch-action:manipulation;
+  }
+
+  .topbar{display:flex; align-items:flex-end; justify-content:space-between; margin:2px 2px 10px;}
+  .brand{line-height:1}
+  .brand .logo{
+    font-style:italic; font-weight:800; font-size:22px; letter-spacing:.02em;
+    color:#e8e9ec; text-shadow:0 1px 0 rgba(0,0,0,.6);
+  }
+  .brand .logo em{font-style:italic; color:var(--brand-red)}
+  .brand .model{
+    font-size:9px; letter-spacing:.32em; color:#9a9ba4; margin-top:4px; text-transform:uppercase;
+  }
+  .speaker{display:flex; gap:10px; align-items:center;}
+  .grille{display:grid; grid-template-columns:repeat(6,4px); gap:3px;}
+  .grille i{width:4px;height:4px;border-radius:50%;background:#101013;box-shadow:0 1px 0 rgba(255,255,255,.08)}
+  .mute{
+    appearance:none; border:0; cursor:pointer;
+    font-size:8px; letter-spacing:.12em; color:#c6c7cd;
+    background:linear-gradient(#4a4a55,#33333c);
+    border-radius:4px; padding:4px 7px;
+    box-shadow:0 1px 0 rgba(255,255,255,.15) inset,0 2px 3px rgba(0,0,0,.5);
+  }
+  .mute[aria-pressed="true"]{color:#6e6f78; box-shadow:0 1px 3px rgba(0,0,0,.6) inset}
+  .mute:focus-visible{outline:2px solid var(--legend); outline-offset:2px}
+
+  /* metal plate around screen */
+  .plate{
+    background:linear-gradient(175deg,#dcdee2,var(--plate) 40%,#b3b6bd);
+    border-radius:10px; padding:10px 12px 12px;
+    box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 -1px 0 rgba(0,0,0,.25) inset,0 2px 4px rgba(0,0,0,.45);
+  }
+  .plate-row{display:flex; justify-content:space-between; align-items:baseline; margin:0 2px 8px;}
+  .plate-row .t1{font-size:10px; font-weight:700; letter-spacing:.3em; color:var(--plate-ink); text-transform:uppercase;}
+  .plate-row .t2{font-size:8px; letter-spacing:.2em; color:#5c5e66; text-transform:uppercase;}
+
+  .screen{
+    background:
+      linear-gradient(178deg, rgba(255,255,255,.25), rgba(255,255,255,0) 12%),
+      linear-gradient(160deg, var(--lcd), var(--lcd-deep));
+    border:3px solid var(--bezel);
+    border-radius:6px;
+    box-shadow:0 3px 8px rgba(0,0,0,.35) inset, 0 1px 0 rgba(255,255,255,.4);
+    padding:8px 10px 4px;
+  }
+  .sevenseg{display:block; width:100%; height:auto;}
+  .arena{display:block; width:100%; height:auto; margin-top:2px;}
+
+  .lcdtxt{
+    font-family:"Courier New",ui-monospace,monospace;
+    font-weight:700;
+    fill:var(--seg);
+  }
+
+  /* ============ KEYPAD ============ */
+  .keypad{
+    margin-top:14px;
+    display:grid; grid-template-columns:repeat(4,1fr); gap:9px;
+  }
+  .key{
+    appearance:none; border:0; cursor:pointer;
+    position:relative;
+    height:44px; border-radius:7px;
+    background:linear-gradient(178deg,var(--key-hi),var(--key) 45%,#2e2e36);
+    color:var(--key-ink);
+    font-family:inherit; font-size:16px; font-weight:700;
+    box-shadow:
+      0 1px 0 rgba(255,255,255,.18) inset,
+      0 -2px 0 rgba(0,0,0,.35) inset,
+      0 3px 0 #17171b,
+      0 5px 6px rgba(0,0,0,.4);
+    transition:transform .04s ease, box-shadow .04s ease;
+  }
+  .key:active,.key.pressed{
+    transform:translateY(2px);
+    box-shadow:0 1px 0 rgba(255,255,255,.12) inset,0 -1px 0 rgba(0,0,0,.35) inset,0 1px 0 #17171b,0 2px 3px rgba(0,0,0,.4);
+  }
+  .key:focus-visible{outline:2px solid var(--legend); outline-offset:2px}
+  .key.red{background:linear-gradient(178deg,var(--key-red-hi),var(--key-red) 45%,#93321f); box-shadow:0 1px 0 rgba(255,255,255,.25) inset,0 -2px 0 rgba(0,0,0,.3) inset,0 3px 0 #6e2417,0 5px 6px rgba(0,0,0,.4);}
+  .key.red:active,.key.red.pressed{box-shadow:0 1px 0 rgba(255,255,255,.15) inset,0 -1px 0 rgba(0,0,0,.3) inset,0 1px 0 #6e2417,0 2px 3px rgba(0,0,0,.4)}
+  .key .legend{
+    position:absolute; top:3px; left:0; right:0;
+    font-size:7.5px; font-weight:700; letter-spacing:.08em;
+    color:var(--legend); text-transform:uppercase;
+  }
+  .key .cap{display:block; margin-top:6px;}
+  .key.op .cap{font-size:18px}
+  .footprint{
+    margin-top:12px; text-align:center;
+    font-size:8px; letter-spacing:.22em; color:#83848d; text-transform:uppercase;
+  }
+
+  /* ============ PAGE CAPTION ============ */
+  .caption{
+    width:min(400px,96vw); margin-top:22px;
+    font-size:12.5px; line-height:1.9; color:var(--pg-ink);
+  }
+  .caption h2{font-size:12px; letter-spacing:.2em; text-transform:uppercase; color:var(--pg-sub); margin:0 0 6px; font-weight:700;}
+  .caption table{border-collapse:collapse; width:100%; font-variant-numeric:tabular-nums;}
+  .caption td{padding:3px 8px 3px 0; vertical-align:top;}
+  .caption td.k{white-space:nowrap; font-family:ui-monospace,"Courier New",monospace; font-weight:700;}
+  .caption p{margin:10px 0 0;}
+</style>
+
+<p class="strap">Handheld LCD Game &middot; circa 1980</p>
+
+<div class="device" id="device">
+  <div class="topbar">
+    <div class="brand">
+      <div class="logo">BX-80<em>&#9646;</em></div>
+      <div class="model">Boxing Game &amp; Calculator</div>
+    </div>
+    <div class="speaker">
+      <button class="mute" id="muteBtn" aria-pressed="false" title="サウンド切替">SOUND</button>
+      <div class="grille" aria-hidden="true">
+        <i></i><i></i><i></i><i></i><i></i><i></i>
+        <i></i><i></i><i></i><i></i><i></i><i></i>
+        <i></i><i></i><i></i><i></i><i></i><i></i>
+      </div>
+    </div>
+  </div>
+
+  <div class="plate">
+    <div class="plate-row">
+      <span class="t1">Boxing</span>
+      <span class="t2" id="modeLabel">Game Mode</span>
+    </div>
+    <div class="screen">
+      <svg class="sevenseg" id="segsvg" viewBox="0 0 236 46" aria-hidden="true"></svg>
+      <svg class="arena" id="arena" viewBox="0 0 400 168" aria-hidden="true"></svg>
+    </div>
+  </div>
+
+  <div class="keypad" id="keypad">
+    <button class="key red" data-k="MODE"><span class="cap" style="font-size:11px">MODE</span></button>
+    <button class="key red" data-k="AC"><span class="legend">Start</span><span class="cap">AC</span></button>
+    <button class="key op" data-k="%"><span class="cap">%</span></button>
+    <button class="key op" data-k="/"><span class="cap">&divide;</span></button>
+
+    <button class="key" data-k="7"><span class="legend">Punch &uarr;</span><span class="cap">7</span></button>
+    <button class="key" data-k="8"><span class="cap">8</span></button>
+    <button class="key" data-k="9"><span class="legend">Guard &uarr;</span><span class="cap">9</span></button>
+    <button class="key op" data-k="*"><span class="cap">&times;</span></button>
+
+    <button class="key" data-k="4"><span class="cap">4</span></button>
+    <button class="key" data-k="5"><span class="cap">5</span></button>
+    <button class="key" data-k="6"><span class="cap">6</span></button>
+    <button class="key op" data-k="-"><span class="cap">&minus;</span></button>
+
+    <button class="key" data-k="1"><span class="legend">Punch &darr;</span><span class="cap">1</span></button>
+    <button class="key" data-k="2"><span class="cap">2</span></button>
+    <button class="key" data-k="3"><span class="legend">Guard &darr;</span><span class="cap">3</span></button>
+    <button class="key op" data-k="+"><span class="cap">+</span></button>
+
+    <button class="key" data-k="0"><span class="cap">0</span></button>
+    <button class="key" data-k="."><span class="cap">&middot;</span></button>
+    <button class="key op" data-k="=" style="grid-column:span 2"><span class="cap">=</span></button>
+  </div>
+
+  <div class="footprint">Electronic Calculator &middot; Made for Nostalgia</div>
+</div>
+
+<div class="caption">
+  <h2>あそびかた</h2>
+  <table>
+    <tr><td class="k">AC</td><td>ゲームスタート（MODEで電卓⇄ゲーム切替）</td></tr>
+    <tr><td class="k">7 / F</td><td>上パンチ（顔面ジャブ）</td></tr>
+    <tr><td class="k">1 / V</td><td>下パンチ（ボディブロー）</td></tr>
+    <tr><td class="k">9 / J</td><td>上ガード</td></tr>
+    <tr><td class="k">3 / N</td><td>下ガード</td></tr>
+  </table>
+  <p>敵のパンチは<strong>点滅で予告</strong>されます。同じ高さのガードで防ぎ、予告中に打ち込むとカウンター（15点）。ガードが空いた側を殴ると10点。敵の体力を削るとダウン→10カウントでKO、次のラウンドへ（だんだん速くなります）。自分は1ラウンドにつきハート3つ。MODEを押せばふつうの8桁電卓としても使えます。</p>
+</div>
+
+<script>
+(function(){
+"use strict";
+var $=function(s){return document.querySelector(s)};
+
+/* ================= 7-SEGMENT DISPLAY ================= */
+var SEGMAP={
+ "0":"abcdef","1":"bc","2":"abdeg","3":"abcdg","4":"bcfg","5":"acdfg","6":"acdefg",
+ "7":"abc","8":"abcdefg","9":"abcdfg","-":"g"," ":"","E":"adefg","o":"cdeg","H":"bcefg",
+ "L":"def","P":"abefg","A":"abcefg","C":"adef","U":"bcdef","r":"eg","n":"ceg","d":"bcdeg","F":"aefg","I":"ef"
+};
+var SEGRECT={
+ a:[3,0,16,5], b:[17,3,5,16], c:[17,21,5,16], d:[3,35,16,5],
+ e:[0,21,5,16], f:[0,3,5,16], g:[3,18,16,4]
+};
+var NDIG=8, segEls=[];
+(function buildDisplay(){
+ var svg=$("#segsvg"), ns="http://www.w3.org/2000/svg";
+ for(var i=0;i<NDIG;i++){
+   var g=document.createElementNS(ns,"g");
+   g.setAttribute("transform","translate("+(4+i*29)+",3) skewX(-6)");
+   var digit={};
+   for(var s in SEGRECT){
+     var r=SEGRECT[s], el=document.createElementNS(ns,"rect");
+     el.setAttribute("x",r[0]); el.setAttribute("y",r[1]);
+     el.setAttribute("width",r[2]); el.setAttribute("height",r[3]);
+     el.setAttribute("rx",1.5); el.setAttribute("fill","var(--ghost)");
+     g.appendChild(el); digit[s]=el;
+   }
+   var dp=document.createElementNS(ns,"circle");
+   dp.setAttribute("cx",25.5); dp.setAttribute("cy",38); dp.setAttribute("r",2.4);
+   dp.setAttribute("fill","var(--ghost)");
+   g.appendChild(dp); digit.dp=dp;
+   svg.appendChild(g); segEls.push(digit);
+ }
+})();
+function setDisplay(str){
+ str=String(str);
+ var cells=[],i;
+ for(i=0;i<str.length;i++){
+   var ch=str[i];
+   if(ch==="."&&cells.length){cells[cells.length-1].dp=true;}
+   else cells.push({ch:ch,dp:false});
+ }
+ while(cells.length<NDIG)cells.unshift({ch:" ",dp:false});
+ if(cells.length>NDIG)cells=cells.slice(cells.length-NDIG);
+ for(i=0;i<NDIG;i++){
+   var on=SEGMAP[cells[i].ch]||"";
+   for(var s in SEGRECT)
+     segEls[i][s].setAttribute("fill",on.indexOf(s)>=0?"var(--seg)":"var(--ghost)");
+   segEls[i].dp.setAttribute("fill",cells[i].dp?"var(--seg)":"var(--ghost)");
+ }
+}
+
+/* ================= ARENA (LCD sprites) ================= */
+var POSES={
+ idle:'<polygon points="-13,0 -5,0 -3,-26 -11,-27"/><polygon points="3,0 11,0 10,-27 2,-26"/>'+
+      '<polygon points="-11,-26 9,-27 12,-52 -9,-53"/><circle cx="9" cy="-61" r="8"/>'+
+      '<circle cx="16" cy="-51" r="5"/><polygon points="10,-46 22,-42 21,-36 8,-40"/><circle cx="23" cy="-40" r="5.5"/>',
+ phi:'<polygon points="-16,0 -8,0 -4,-26 -12,-27"/><polygon points="6,0 14,0 12,-27 4,-26"/>'+
+     '<polygon points="-9,-26 11,-27 15,-52 -6,-53"/><circle cx="12" cy="-60" r="8"/>'+
+     '<polygon points="12,-57 38,-59 38,-51 12,-49"/><circle cx="41" cy="-55" r="6"/><circle cx="8" cy="-46" r="5"/>',
+ plo:'<polygon points="-16,0 -8,0 -4,-26 -12,-27"/><polygon points="6,0 14,0 12,-27 4,-26"/>'+
+     '<polygon points="-9,-24 11,-25 14,-49 -6,-50"/><circle cx="12" cy="-57" r="8"/>'+
+     '<polygon points="12,-44 38,-40 38,-32 12,-36"/><circle cx="41" cy="-36" r="6"/><circle cx="8" cy="-52" r="5"/>',
+ ghi:'<polygon points="-13,0 -5,0 -3,-26 -11,-27"/><polygon points="3,0 11,0 10,-27 2,-26"/>'+
+     '<polygon points="-11,-26 9,-27 12,-52 -9,-53"/><circle cx="7" cy="-60" r="8"/>'+
+     '<polygon points="12,-58 17,-58 19,-46 10,-47"/><circle cx="18" cy="-60" r="6"/><circle cx="17" cy="-48" r="6"/>',
+ glo:'<polygon points="-13,0 -5,0 -3,-26 -11,-27"/><polygon points="3,0 11,0 10,-27 2,-26"/>'+
+     '<polygon points="-11,-24 9,-25 11,-48 -9,-49"/><circle cx="8" cy="-56" r="8"/>'+
+     '<circle cx="16" cy="-40" r="6"/><circle cx="13" cy="-30" r="6"/>',
+ hihi:'<polygon points="-15,0 -7,0 -5,-26 -13,-27"/><polygon points="2,0 10,0 9,-27 1,-26"/>'+
+      '<polygon points="-13,-26 7,-27 6,-52 -15,-51"/><circle cx="-8" cy="-58" r="8"/>'+
+      '<circle cx="12" cy="-40" r="5"/><circle cx="-16" cy="-44" r="5"/>'+
+      '<polygon points="-4,-72 -1,-67 -7,-67"/><polygon points="-14,-70 -11,-65 -17,-65"/>',
+ hilo:'<polygon points="-13,0 -5,0 -4,-24 -12,-25"/><polygon points="3,0 11,0 10,-25 2,-24"/>'+
+      '<polygon points="-12,-24 8,-26 14,-40 -8,-44"/><circle cx="14" cy="-46" r="8"/>'+
+      '<circle cx="4" cy="-24" r="5"/><circle cx="12" cy="-26" r="5"/>'+
+      '<polygon points="18,-58 21,-53 15,-53"/>',
+ down:'<rect x="-26" y="-12" width="34" height="9" rx="3.5"/><circle cx="-32" cy="-8" r="7"/>'+
+      '<polygon points="8,-11 21,-17 23,-11 10,-4"/>'+
+      '<circle cx="-38" cy="-26" r="2.4"/><circle cx="-30" cy="-31" r="2.4"/><circle cx="-24" cy="-25" r="2.4"/>'
+};
+var POSE_NAMES=Object.keys(POSES);
+(function buildArena(){
+ var h='';
+ /* printed ring art (always visible, like the panel print on real LCD games) */
+ h+='<g fill="none" stroke="var(--print)" stroke-width="2">';
+ h+='<line x1="14" y1="150" x2="386" y2="150"/>';
+ h+='<line x1="20" y1="78" x2="380" y2="78"/><line x1="20" y1="100" x2="380" y2="100"/>';
+ h+='<line x1="20" y1="150" x2="20" y2="72"/><line x1="380" y1="150" x2="380" y2="72"/>';
+ h+='</g>';
+ h+='<text x="24" y="22" class="lcdtxt" font-size="11" style="fill:var(--print)">YOU</text>';
+ h+='<text x="376" y="22" text-anchor="end" class="lcdtxt" font-size="11" style="fill:var(--print)">CPU</text>';
+ /* HP blocks */
+ var i;
+ h+='<g id="php">';
+ for(i=0;i<3;i++)h+='<rect x="'+(24+i*15)+'" y="28" width="11" height="11" rx="2" transform="rotate(45 '+(29.5+i*15)+' 33.5)"/>';
+ h+='</g><g id="ehp">';
+ for(i=0;i<8;i++)h+='<rect x="'+(366-i*13)+'" y="28" width="10" height="13" rx="1.5"/>';
+ h+='</g>';
+ /* message texts */
+ h+='<text id="msg" x="200" y="46" text-anchor="middle" class="lcdtxt" font-size="24" letter-spacing="3"></text>';
+ h+='<text id="msg2" x="200" y="64" text-anchor="middle" class="lcdtxt" font-size="11" letter-spacing="2"></text>';
+ /* boxers: every pose always in the DOM -> LCD ghosting */
+ function boxer(id,tf){
+   var s='<g transform="'+tf+'">';
+   POSE_NAMES.forEach(function(p){ s+='<g id="'+id+'-'+p+'" fill="var(--ghost)">'+POSES[p]+'</g>'; });
+   return s+'</g>';
+ }
+ h+=boxer('P','translate(168,148)');
+ h+=boxer('E','translate(232,148) scale(-1,1)');
+ $("#arena").innerHTML=h;
+})();
+function setPose(who,pose,visible){
+ POSE_NAMES.forEach(function(p){
+   var el=document.getElementById(who+"-"+p);
+   el.setAttribute("fill",(visible&&p===pose)?"var(--seg)":"var(--ghost)");
+ });
+}
+function setHP(id,n){
+ var g=document.getElementById(id),i,kids=g.children;
+ for(i=0;i<kids.length;i++)kids[i].setAttribute("fill",i<n?"var(--seg)":"var(--ghost)");
+}
+function setMsg(t,t2){ $("#msg").textContent=t||""; $("#msg2").textContent=t2||""; }
+
+/* ================= SOUND (piezo beeper) ================= */
+var actx=null, muted=false;
+function ac(){ if(!actx){ try{actx=new (window.AudioContext||window.webkitAudioContext)();}catch(e){} } if(actx&&actx.state==="suspended")actx.resume(); return actx; }
+function beep(freq,dur,delay,vol){
+ if(muted)return; var c=ac(); if(!c)return;
+ dur=dur||0.05; delay=delay||0; vol=vol||0.12;
+ var t=c.currentTime+delay, o=c.createOscillator(), g=c.createGain();
+ o.type="square"; o.frequency.value=freq;
+ g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+ o.connect(g); g.connect(c.destination); o.start(t); o.stop(t+dur+0.02);
+}
+var SND={
+ key:function(){beep(2200,0.02,0,0.06);},
+ hit:function(){beep(880,0.05);beep(1320,0.04,0.05);},
+ counter:function(){beep(880,0.04);beep(1320,0.04,0.045);beep(1760,0.06,0.09);},
+ block:function(){beep(330,0.05);},
+ hurt:function(){beep(196,0.12,0,0.16);beep(147,0.14,0.1,0.16);},
+ fall:function(){[660,554,440,330,220].forEach(function(f,i){beep(f,0.09,i*0.09,0.14);});},
+ count:function(){beep(988,0.06);},
+ round:function(){[523,659,784,1047].forEach(function(f,i){beep(f,0.09,i*0.1);});},
+ ko:function(){[1047,784,1047,1319].forEach(function(f,i){beep(f,0.12,i*0.13,0.15);});},
+ over:function(){[392,330,262,196].forEach(function(f,i){beep(f,0.16,i*0.17,0.15);});}
+};
+$("#muteBtn").addEventListener("click",function(){
+ muted=!muted; this.setAttribute("aria-pressed",muted?"true":"false");
+ if(!muted)SND.key();
+});
+
+/* ================= CALCULATOR ================= */
+var calc={cur:"0",acc:null,op:null,fresh:true};
+function fmt(v){
+ if(!isFinite(v))return "E";
+ var neg=v<0, a=Math.abs(v), maxD=neg?7:8;
+ if(a>=Math.pow(10,maxD))return "E";
+ var intLen=Math.max(1,Math.floor(Math.log10(a||1))+1);
+ var s=a.toFixed(Math.max(0,maxD-intLen));
+ if(s.indexOf(".")>=0)s=s.replace(/0+$/,"").replace(/\.$/,"");
+ return (neg?"-":"")+s;
+}
+function calcCompute(){
+ if(calc.op===null||calc.acc===null)return;
+ var a=calc.acc,b=parseFloat(calc.cur),r;
+ switch(calc.op){case"+":r=a+b;break;case"-":r=a-b;break;case"*":r=a*b;break;case"/":r=b===0?Infinity:a/b;break;}
+ calc.cur=fmt(r); calc.acc=null; calc.op=null; calc.fresh=true;
+}
+function calcKey(k){
+ SND.key();
+ if(k==="AC"){calc={cur:"0",acc:null,op:null,fresh:true};}
+ else if(k>="0"&&k<="9"){
+   if(calc.fresh||calc.cur==="0"){calc.cur=k;calc.fresh=false;}
+   else if(calc.cur.replace(/[-.]/g,"").length<8)calc.cur+=k;
+ }
+ else if(k==="."){
+   if(calc.fresh){calc.cur="0.";calc.fresh=false;}
+   else if(calc.cur.indexOf(".")<0)calc.cur+=".";
+ }
+ else if(k==="%"){calc.cur=fmt(parseFloat(calc.cur)/100);calc.fresh=true;}
+ else if(k==="+"||k==="-"||k==="*"||k==="/"){
+   if(calc.op!==null&&!calc.fresh)calcCompute();
+   calc.acc=parseFloat(calc.cur); calc.op=k; calc.fresh=true;
+ }
+ else if(k==="="){calcCompute();}
+ setDisplay(calc.cur);
+}
+
+/* ================= GAME ================= */
+var HISCORE_KEY="bx80hi";
+var G={
+ mode:"game", state:"title",
+ score:0, hi:parseInt(localStorage.getItem(HISCORE_KEY)||"0",10)||0,
+ round:1, downWho:null, count:0, countT:0,
+ msgT:0, phaseT:0,
+ p:{hp:3,pose:"idle",poseT:0,guard:null,guardT:0},
+ e:{hp:3,phase:"idle",phaseT:0,zone:null,guard:null,hitZone:"hi"}
+};
+function speed(){return 1+(G.round-1)*0.16;}
+function now(){return performance.now();}
+
+function startGame(){
+ G.score=0; G.round=1; startRound();
+}
+function startRound(){
+ G.p={hp:3,pose:"idle",poseT:0,guard:null,guardT:0};
+ G.e={hp:Math.min(2+G.round,8),phase:"idle",phaseT:now()+800/speed(),zone:null,guard:null,hitZone:"hi"};
+ G.downWho=null;
+ G.state="intro"; G.phaseT=now()+1500;
+ SND.round();
+}
+function gameOver(){
+ G.state="over"; SND.over();
+ if(G.score>G.hi){G.hi=G.score; try{localStorage.setItem(HISCORE_KEY,String(G.hi));}catch(e){}}
+}
+function knockdown(who){
+ G.state="count"; G.downWho=who; G.count=0; G.countT=now()+700;
+ SND.fall();
+}
+function playerHitBy(zone){
+ G.p.hp--; G.p.pose=zone==="hi"?"hihi":"hilo"; G.p.poseT=now()+620;
+ G.p.guard=null; SND.hurt();
+ if(G.p.hp<=0)knockdown("p");
+}
+function enemyHit(pts,zone){
+ G.e.hp--; G.score+=pts;
+ G.e.phase="hit"; G.e.hitZone=zone; G.e.phaseT=now()+430;
+ if(G.e.hp<=0){SND.hit();knockdown("e");}
+ else SND.hit();
+}
+function playerPunch(zone){
+ if(G.mode!=="game")return;
+ if(G.state==="title"||G.state==="over"){return;}
+ if(G.state!=="fight")return;
+ var t=now();
+ if(G.p.poseT>t&&(G.p.pose==="hihi"||G.p.pose==="hilo"))return; /* reeling */
+ G.p.pose=zone==="hi"?"phi":"plo"; G.p.poseT=t+230; G.p.guard=null;
+ if(G.e.phase==="tele"){ /* counter! */
+   SND.counter(); enemyHit(15,zone);
+ }else if(G.e.phase==="idle"||G.e.phase==="recover"){
+   if(G.e.guard===zone){
+     SND.block();
+     if(Math.random()<0.35){G.e.phase="tele";G.e.zone=Math.random()<0.5?"hi":"lo";G.e.phaseT=t+420/speed();}
+   }else enemyHit(10,zone);
+ }
+ /* strike/hit phases: swing hits nothing */
+}
+function playerGuard(zone){
+ if(G.mode!=="game"||G.state!=="fight")return;
+ var t=now();
+ if(G.p.poseT>t&&(G.p.pose==="hihi"||G.p.pose==="hilo"))return;
+ G.p.guard=zone; G.p.guardT=t+470;
+ SND.key();
+}
+function enemyStrikeResolve(){
+ var t=now();
+ if(G.p.guard===G.e.zone&&G.p.guardT>t){
+   G.score+=2; SND.block();
+ }else{
+   playerHitBy(G.e.zone);
+ }
+}
+
+function tick(){
+ var t=now();
+ if(G.mode==="game"){
+  if(G.state==="intro"&&t>=G.phaseT){
+    G.state="fight"; G.msgT=t+800;
+  }
+  else if(G.state==="fight"){
+    var e=G.e;
+    if(t>=e.phaseT){
+      switch(e.phase){
+        case "idle":{
+          var r=Math.random();
+          if(r<0.55){e.phase="tele"; e.zone=Math.random()<0.5?"hi":"lo"; e.phaseT=t+640/speed();}
+          else if(r<0.8){e.guard=Math.random()<0.5?"hi":"lo"; e.phaseT=t+(500+Math.random()*600)/speed();}
+          else{e.guard=null; e.phaseT=t+(350+Math.random()*500)/speed();}
+          break;
+        }
+        case "tele": e.phase="strike"; e.phaseT=t+190; enemyStrikeResolve(); break;
+        case "strike": e.phase="recover"; e.phaseT=t+540/speed(); break;
+        case "recover": e.phase="idle"; e.guard=null; e.phaseT=t+(300+Math.random()*650)/speed(); break;
+        case "hit": e.phase="idle"; e.guard=null; e.phaseT=t+430/speed(); break;
+      }
+    }
+  }
+  else if(G.state==="count"){
+    if(t>=G.countT){
+      G.count++; G.countT=t+780;
+      if(G.count<=10)SND.count();
+      if(G.count>=11){
+        if(G.downWho==="e"){G.score+=50*G.round; SND.ko(); G.round++; startRound();}
+        else gameOver();
+      }
+    }
+  }
+ }
+ render(t);
+}
+
+/* ================= RENDER ================= */
+function render(t){
+ var blink=Math.floor(t/130)%2===0;
+ var slowBlink=Math.floor(t/500)%2===0;
+
+ if(G.mode==="calc"){
+   setPose("P",null,false); setPose("E",null,false);
+   setHP("php",0); setHP("ehp",0);
+   setMsg("","");
+   return; /* display was set by calcKey */
+ }
+
+ /* --- display --- */
+ if(G.state==="title")setDisplay(String(G.hi));
+ else if(G.state==="count"&&G.count>0)setDisplay(String(Math.min(G.count,10)));
+ else setDisplay(String(G.score));
+
+ /* --- HP --- */
+ setHP("php",G.p.hp); setHP("ehp",G.e.hp);
+
+ /* --- messages --- */
+ if(G.state==="title")setMsg("BOXING",slowBlink?"PUSH AC KEY":"");
+ else if(G.state==="intro")setMsg("ROUND "+G.round,"");
+ else if(G.state==="fight")setMsg(G.msgT>t?"FIGHT!":"","ROUND "+G.round);
+ else if(G.state==="count")setMsg(G.count>0?String(Math.min(G.count,10)):"DOWN","");
+ else if(G.state==="over")setMsg("K.O.",slowBlink?"PUSH AC KEY":("HI "+G.hi));
+
+ /* --- player pose --- */
+ var pPose="idle";
+ if(G.state==="count"&&G.downWho==="p")pPose="down";
+ else if(G.p.poseT>t)pPose=G.p.pose;
+ else if(G.p.guard&&G.p.guardT>t)pPose=G.p.guard==="hi"?"ghi":"glo";
+ var pVis=!(G.state==="title");
+ setPose("P",pPose,pVis);
+
+ /* --- enemy pose --- */
+ var ePose="idle", eVis=!(G.state==="title");
+ if(G.state==="count"&&G.downWho==="e")ePose="down";
+ else{
+   switch(G.e.phase){
+     case "tele": ePose=G.e.zone==="hi"?"phi":"plo"; if(!blink)eVis=false; break;
+     case "strike": ePose=G.e.zone==="hi"?"phi":"plo"; break;
+     case "hit": ePose=G.e.hitZone==="hi"?"hihi":"hilo"; break;
+     case "recover": ePose="idle"; break;
+     default: ePose=G.e.guard?(G.e.guard==="hi"?"ghi":"glo"):"idle";
+   }
+ }
+ if(G.state==="count"&&G.downWho==="p")ePose="idle";
+ setPose("E",ePose,eVis);
+}
+
+/* ================= INPUT ================= */
+function press(k){
+ ac(); /* unlock audio on first gesture */
+ if(k==="MODE"){
+   G.mode=G.mode==="game"?"calc":"game";
+   $("#modeLabel").textContent=G.mode==="game"?"Game Mode":"Calculator";
+   SND.key();
+   if(G.mode==="calc")setDisplay(calc.cur);
+   else{G.state="title";}
+   return;
+ }
+ if(G.mode==="calc"){calcKey(k);return;}
+ /* game mode */
+ if(k==="AC"){
+   SND.key();
+   if(G.state==="title"||G.state==="over")startGame();
+   else G.state="title"; /* AC mid-game = reset to title */
+   return;
+ }
+ if(k==="7")playerPunch("hi");
+ else if(k==="1")playerPunch("lo");
+ else if(k==="9")playerGuard("hi");
+ else if(k==="3")playerGuard("lo");
+ else SND.key();
+}
+
+document.querySelectorAll(".key").forEach(function(btn){
+ btn.addEventListener("pointerdown",function(ev){
+   ev.preventDefault();
+   btn.classList.add("pressed");
+   press(btn.getAttribute("data-k"));
+ });
+ ["pointerup","pointerleave","pointercancel"].forEach(function(evn){
+   btn.addEventListener(evn,function(){btn.classList.remove("pressed");});
+ });
+ btn.addEventListener("keydown",function(ev){
+   if(ev.key==="Enter"||ev.key===" "){ev.preventDefault();press(btn.getAttribute("data-k"));}
+ });
+});
+
+var KEYMAP={
+ "f":"7","v":"1","j":"9","n":"3",
+ "0":"0","1":"1","2":"2","3":"3","4":"4","5":"5","6":"6","7":"7","8":"8","9":"9",
+ ".":".","+":"+","-":"-","*":"*","/":"/","%":"%","=":"=","Enter":"=",
+ "a":"AC","Escape":"AC","m":"MODE",
+ "ArrowUp":"9","ArrowDown":"3","ArrowLeft":"7","ArrowRight":"1"
+};
+document.addEventListener("keydown",function(ev){
+ if(ev.repeat)return;
+ var k=KEYMAP[ev.key]||KEYMAP[ev.key.toLowerCase()];
+ if(!k)return;
+ if(ev.key.indexOf("Arrow")===0)ev.preventDefault();
+ var btn=document.querySelector('.key[data-k="'+k+'"]');
+ if(btn){btn.classList.add("pressed");setTimeout(function(){btn.classList.remove("pressed");},110);}
+ press(k);
+});
+
+/* boot — rAF for smoothness, interval as fallback when rAF is throttled */
+setDisplay(String(G.hi));
+(function loop(){ tick(); requestAnimationFrame(loop); })();
+setInterval(tick,120);
+})();
+</script>

@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ゲーム置き場</title>
+<style>
+  :root{
+    --bg:#e9e5da; --ink:#453f33; --sub:#8a8271; --card:#f5f2ea; --line:#d6d0c0;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#15161a; --ink:#ccc8bc; --sub:#7e796c; --card:#1d1f26; --line:#2e313b; }
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; min-height:100vh; background:var(--bg); color:var(--ink);
+    font-family:"Helvetica Neue",Helvetica,Arial,"Hiragino Kaku Gothic ProN",Meiryo,sans-serif;
+    display:flex; flex-direction:column; align-items:center; padding:48px 16px 64px;
+  }
+  .strap{font-size:11px; letter-spacing:.3em; color:var(--sub); text-transform:uppercase; margin:0 0 10px;}
+  h1{font-size:28px; margin:0 0 6px; letter-spacing:.06em;}
+  .lead{font-size:13px; color:var(--sub); margin:0 0 36px;}
+  .shelf{display:flex; flex-wrap:wrap; gap:20px; justify-content:center; max-width:760px;}
+  a.cart{
+    display:block; width:300px; text-decoration:none; color:inherit;
+    background:var(--card); border:1px solid var(--line); border-radius:14px;
+    padding:18px 20px 20px; transition:transform .12s ease, box-shadow .12s ease;
+  }
+  a.cart:hover{transform:translateY(-3px); box-shadow:0 10px 24px rgba(0,0,0,.12);}
+  a.cart:focus-visible{outline:2px solid var(--sub); outline-offset:3px;}
+  .badge{
+    display:inline-block; font-size:10px; font-weight:700; letter-spacing:.22em;
+    padding:5px 10px; border-radius:4px; text-transform:uppercase; margin-bottom:12px;
+  }
+  .bx .badge{background:#26262b; color:#e2604a;}
+  .kb .badge{background:#1e2433; color:#d6a63c;}
+  .cart h2{font-size:17px; margin:0 0 6px;}
+  .cart p{font-size:12.5px; line-height:1.8; color:var(--sub); margin:0;}
+  .play{display:inline-block; margin-top:12px; font-size:12px; font-weight:700; letter-spacing:.12em;}
+  .bx .play{color:#c8442e;} .kb .play{color:#b08a2a;}
+  footer{margin-top:48px; font-size:11px; letter-spacing:.18em; color:var(--sub); text-transform:uppercase;}
+</style>
+</head>
+<body>
+  <p class="strap">Retro LCD Games</p>
+  <h1>ゲーム置き場</h1>
+  <p class="lead">1980年頃のゲーム電卓を再現したブラウザゲーム集</p>
+
+  <div class="shelf">
+    <a class="cart bx" href="boxing/">
+      <span class="badge">BX-80</span>
+      <h2>ボクシング電卓</h2>
+      <p>点滅で予告される敵のパンチをガードで防ぎ、スキを突いて打ち込め。KOでラウンドが進むほど速くなる。8桁電卓モード付き。</p>
+      <span class="play">あそぶ →</span>
+    </a>
+    <a class="cart kb" href="kickboxing/">
+      <span class="badge">KB-80</span>
+      <h2>キックボクシング電卓</h2>
+      <p>パンチに加えて強力なキックが使える上位機。キックは威力2倍だが出が遅くスキも大きい。敵も蹴ってくるので油断禁物。</p>
+      <span class="play">あそぶ →</span>
+    </a>
+  </div>
+
+  <footer>Made with Claude Code</footer>
+</body>
+</html>
