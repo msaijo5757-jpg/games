@@ -479,13 +479,13 @@ function swing(){
  var t=now();
  G.swingT=t+220;
  if(P.st!=="ball"){SND.whiff();return;} /* practice swing */
- if(P.pos<HIT){ SND.whiff(); doStrike(t,true); return; }
- var off=(t-P.stepStart)/P.stepDur;   /* 0..1 within the hit-zone step */
- var d=Math.abs(off-0.5), r=Math.random();
- if(d<0.13)      doHit(t, r<0.6?4:3);
- else if(d<0.28) doHit(t, r<0.5?2:1);
- else if(r<0.45) doHit(t,1);
- else            doFoul(t);
+ /* judge by continuous ball progress; perfect meet = middle of the plate step */
+ var prog=P.pos+(t-P.stepStart)/P.stepDur;
+ var a=Math.abs(prog-(HIT+0.5)), r=Math.random();
+ if(a<0.25)      doHit(t, r<0.55?4:3);
+ else if(a<0.6)  doHit(t, r<0.55?2:1);
+ else if(a<1.1)  { if(r<0.5)doHit(t,1); else doFoul(t); }
+ else { SND.whiff(); doStrike(t,true); }
 }
 
 function tick(){
@@ -497,14 +497,15 @@ function tick(){
   else if(G.state==="fight"){
     if(P.st==="wait"&&t>=P.t){
       /* throw: pick pitch type (fast / normal / slow) */
-      var r=Math.random(), base=r<0.25?105:(r<0.75?155:215);
+      var r=Math.random(), base=r<0.25?120:(r<0.75?170:230);
       P.st="ball"; P.pos=0; P.stepStart=t; P.stepDur=base/speed();
       SND.pitch();
     }
     else if(P.st==="ball"){
       if(t>=P.stepStart+P.stepDur){
         P.pos++; P.stepStart+=P.stepDur;
-        if(P.pos>HIT){ doStrike(t,false); } /* took it — called strike */
+        /* one invisible grace step past the plate keeps late swings alive */
+        if(P.pos>HIT+1){ doStrike(t,false); } /* took it — called strike */
       }
     }
     else if(P.st==="flight"&&t>=P.t){
