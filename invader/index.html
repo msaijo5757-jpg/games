@@ -1,0 +1,579 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DI-80 数字インベーダー電卓</title>
+<style>
+  :root{
+    --pg-bg:#e6e4ec;
+    --pg-ink:#3b3648;
+    --pg-sub:#837d92;
+    /* device (fixed, single visual world) — deep space violet & neon green */
+    --body:#221d33; --body-hi:#2f2946; --body-lo:#161221;
+    --plate:#cfd0dc; --plate-ink:#2e2a3e;
+    --bezel:#0e0b16;
+    --lcd:#a9b79b; --lcd-deep:#9aa88c;
+    --seg:#1d2b21;
+    --ghost:rgba(29,43,33,.075);
+    --print:rgba(29,43,33,.38);
+    --key:#3a3452; --key-hi:#4a4468; --key-ink:#efedf6;
+    --key-acc:#3e8f3a; --key-acc-hi:#4ca648;
+    --legend:#8fe07a;
+    --brand-green:#5fd44c;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --pg-bg:#131118; --pg-ink:#c9c5d4; --pg-sub:#79738a; }
+  }
+  :root[data-theme="dark"]{ --pg-bg:#131118; --pg-ink:#c9c5d4; --pg-sub:#79738a; }
+  :root[data-theme="light"]{ --pg-bg:#e6e4ec; --pg-ink:#3b3648; --pg-sub:#837d92; }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0; min-height:100vh;
+    background:var(--pg-bg);
+    background-image:radial-gradient(ellipse 120% 80% at 50% 0%, rgba(255,255,255,.06), transparent 60%);
+    display:flex; flex-direction:column; align-items:center;
+    font-family:"Helvetica Neue",Helvetica,Arial,"Hiragino Kaku Gothic ProN",Meiryo,sans-serif;
+    color:var(--pg-ink);
+    padding:28px 12px 48px;
+  }
+  .strap{
+    font-size:11px; letter-spacing:.28em; text-transform:uppercase;
+    color:var(--pg-sub); margin:0 0 16px; text-align:center;
+  }
+
+  /* ============ DEVICE ============ */
+  .device{
+    width:min(400px,96vw);
+    background:linear-gradient(160deg,var(--body-hi) 0%,var(--body) 30%,var(--body) 70%,var(--body-lo) 100%);
+    border-radius:18px;
+    padding:14px 16px 20px;
+    box-shadow:
+      0 2px 0 rgba(255,255,255,.08) inset,
+      0 -3px 8px rgba(0,0,0,.5) inset,
+      0 18px 40px rgba(0,0,0,.35),
+      0 4px 10px rgba(0,0,0,.25);
+    user-select:none; -webkit-user-select:none;
+    touch-action:manipulation;
+  }
+
+  .topbar{display:flex; align-items:flex-end; justify-content:space-between; margin:2px 2px 10px;}
+  .brand{line-height:1}
+  .brand .logo{
+    font-style:italic; font-weight:800; font-size:22px; letter-spacing:.02em;
+    color:#eeeaf6; text-shadow:0 1px 0 rgba(0,0,0,.6);
+  }
+  .brand .logo em{font-style:italic; color:var(--brand-green)}
+  .brand .model{
+    font-size:9px; letter-spacing:.3em; color:#9a93ab; margin-top:4px; text-transform:uppercase;
+  }
+  .speaker{display:flex; gap:10px; align-items:center;}
+  .grille{display:grid; grid-template-columns:repeat(6,4px); gap:3px;}
+  .grille i{width:4px;height:4px;border-radius:50%;background:#0c0914;box-shadow:0 1px 0 rgba(255,255,255,.08)}
+  .mute{
+    appearance:none; border:0; cursor:pointer;
+    font-size:8px; letter-spacing:.12em; color:#d6d2e0;
+    background:linear-gradient(#4a4468,#332e4c);
+    border-radius:4px; padding:4px 7px;
+    box-shadow:0 1px 0 rgba(255,255,255,.15) inset,0 2px 3px rgba(0,0,0,.5);
+  }
+  .mute[aria-pressed="true"]{color:#6f6980; box-shadow:0 1px 3px rgba(0,0,0,.6) inset}
+  .mute:focus-visible{outline:2px solid var(--legend); outline-offset:2px}
+
+  /* metal plate around screen */
+  .plate{
+    background:linear-gradient(175deg,#e2e2ea,var(--plate) 40%,#b3b4c4);
+    border-radius:10px; padding:10px 12px 12px;
+    box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 -1px 0 rgba(0,0,0,.25) inset,0 2px 4px rgba(0,0,0,.45);
+  }
+  .plate-row{display:flex; justify-content:space-between; align-items:baseline; margin:0 2px 8px;}
+  .plate-row .t1{font-size:10px; font-weight:700; letter-spacing:.3em; color:var(--plate-ink); text-transform:uppercase;}
+  .plate-row .t2{font-size:8px; letter-spacing:.2em; color:#5b5670; text-transform:uppercase;}
+
+  .screen{
+    background:
+      linear-gradient(178deg, rgba(255,255,255,.25), rgba(255,255,255,0) 12%),
+      linear-gradient(160deg, var(--lcd), var(--lcd-deep));
+    border:3px solid var(--bezel);
+    border-radius:6px;
+    box-shadow:0 3px 8px rgba(0,0,0,.35) inset, 0 1px 0 rgba(255,255,255,.4);
+    padding:8px 10px 4px;
+  }
+  .sevenseg{display:block; width:100%; height:auto;}
+  .arena{display:block; width:100%; height:auto; margin-top:2px;}
+
+  .lcdtxt{
+    font-family:"Courier New",ui-monospace,monospace;
+    font-weight:700;
+    fill:var(--seg);
+  }
+
+  /* ============ KEYPAD ============ */
+  .keypad{
+    margin-top:14px;
+    display:grid; grid-template-columns:repeat(4,1fr); gap:9px;
+  }
+  .key{
+    appearance:none; border:0; cursor:pointer;
+    position:relative;
+    height:44px; border-radius:7px;
+    background:linear-gradient(178deg,var(--key-hi),var(--key) 45%,#2e2944);
+    color:var(--key-ink);
+    font-family:inherit; font-size:16px; font-weight:700;
+    box-shadow:
+      0 1px 0 rgba(255,255,255,.18) inset,
+      0 -2px 0 rgba(0,0,0,.35) inset,
+      0 3px 0 #171325,
+      0 5px 6px rgba(0,0,0,.4);
+    transition:transform .04s ease, box-shadow .04s ease;
+  }
+  .key:active,.key.pressed{
+    transform:translateY(2px);
+    box-shadow:0 1px 0 rgba(255,255,255,.12) inset,0 -1px 0 rgba(0,0,0,.35) inset,0 1px 0 #171325,0 2px 3px rgba(0,0,0,.4);
+  }
+  .key:focus-visible{outline:2px solid var(--legend); outline-offset:2px}
+  .key.grn{background:linear-gradient(178deg,var(--key-acc-hi),var(--key-acc) 45%,#2c6629); color:#eefae8; box-shadow:0 1px 0 rgba(255,255,255,.3) inset,0 -2px 0 rgba(0,0,0,.3) inset,0 3px 0 #204d1e,0 5px 6px rgba(0,0,0,.4);}
+  .key.grn:active,.key.grn.pressed{box-shadow:0 1px 0 rgba(255,255,255,.18) inset,0 -1px 0 rgba(0,0,0,.3) inset,0 1px 0 #204d1e,0 2px 3px rgba(0,0,0,.4)}
+  .key .legend{
+    position:absolute; top:3px; left:0; right:0;
+    font-size:7.5px; font-weight:700; letter-spacing:.08em;
+    color:var(--legend); text-transform:uppercase;
+  }
+  .key.grn .legend{color:#173d15}
+  .key .cap{display:block; margin-top:6px;}
+  .key.op .cap{font-size:18px}
+  .footprint{
+    margin-top:12px; text-align:center;
+    font-size:8px; letter-spacing:.22em; color:#8b8499; text-transform:uppercase;
+  }
+
+  /* ============ PAGE CAPTION ============ */
+  .caption{
+    width:min(400px,96vw); margin-top:22px;
+    font-size:12.5px; line-height:1.9; color:var(--pg-ink);
+  }
+  .caption h2{font-size:12px; letter-spacing:.2em; text-transform:uppercase; color:var(--pg-sub); margin:0 0 6px; font-weight:700;}
+  .caption table{border-collapse:collapse; width:100%; font-variant-numeric:tabular-nums;}
+  .caption td{padding:3px 8px 3px 0; vertical-align:top;}
+  .caption td.k{white-space:nowrap; font-family:ui-monospace,"Courier New",monospace; font-weight:700;}
+  .caption p{margin:10px 0 0;}
+</style>
+
+<p class="strap">Handheld LCD Game &middot; circa 1980</p>
+
+<div class="device" id="device">
+  <div class="topbar">
+    <div class="brand">
+      <div class="logo">DI-80<em>&#9608;</em></div>
+      <div class="model">Digit Invader Game &amp; Calculator</div>
+    </div>
+    <div class="speaker">
+      <button class="mute" id="muteBtn" aria-pressed="false" title="サウンド切替">SOUND</button>
+      <div class="grille" aria-hidden="true">
+        <i></i><i></i><i></i><i></i><i></i><i></i>
+        <i></i><i></i><i></i><i></i><i></i><i></i>
+        <i></i><i></i><i></i><i></i><i></i><i></i>
+      </div>
+    </div>
+  </div>
+
+  <div class="plate">
+    <div class="plate-row">
+      <span class="t1">Invader</span>
+      <span class="t2" id="modeLabel">Game Mode</span>
+    </div>
+    <div class="screen">
+      <svg class="sevenseg" id="segsvg" viewBox="0 0 236 46" aria-hidden="true"></svg>
+      <svg class="arena" id="arena" viewBox="0 0 400 118" aria-hidden="true"></svg>
+    </div>
+  </div>
+
+  <div class="keypad" id="keypad">
+    <button class="key grn" data-k="MODE"><span class="cap" style="font-size:11px">MODE</span></button>
+    <button class="key grn" data-k="AC"><span class="legend">Start</span><span class="cap">AC</span></button>
+    <button class="key op" data-k="%"><span class="cap">%</span></button>
+    <button class="key op" data-k="/"><span class="cap">&divide;</span></button>
+
+    <button class="key" data-k="7"><span class="cap">7</span></button>
+    <button class="key" data-k="8"><span class="cap">8</span></button>
+    <button class="key" data-k="9"><span class="cap">9</span></button>
+    <button class="key op" data-k="*"><span class="cap">&times;</span></button>
+
+    <button class="key" data-k="4"><span class="cap">4</span></button>
+    <button class="key" data-k="5"><span class="cap">5</span></button>
+    <button class="key" data-k="6"><span class="cap">6</span></button>
+    <button class="key op" data-k="-"><span class="cap">&minus;</span></button>
+
+    <button class="key" data-k="1"><span class="cap">1</span></button>
+    <button class="key" data-k="2"><span class="cap">2</span></button>
+    <button class="key" data-k="3"><span class="cap">3</span></button>
+    <button class="key op" data-k="+"><span class="legend">Fire</span><span class="cap">+</span></button>
+
+    <button class="key" data-k="0"><span class="cap">0</span></button>
+    <button class="key" data-k="."><span class="legend">Aim</span><span class="cap">&middot;</span></button>
+    <button class="key op" data-k="=" style="grid-column:span 2"><span class="legend">Fire</span><span class="cap">=</span></button>
+  </div>
+
+  <div class="footprint">Electronic Calculator &middot; Made for Nostalgia</div>
+</div>
+
+<div class="caption">
+  <h2>あそびかた</h2>
+  <table>
+    <tr><td class="k">AC</td><td>ゲームスタート（MODEで電卓⇄ゲーム切替）</td></tr>
+    <tr><td class="k">・(AIM)</td><td>照準の数字を 0→1→…→9 と送る（数字キーで直接セットも可）</td></tr>
+    <tr><td class="k">＋/＝(FIRE)</td><td>発射！ 先頭のインベーダーを撃つ</td></tr>
+  </table>
+  <p>画面の右から<strong>数字インベーダー</strong>が行進してきます。表示の左端があなたの照準。<strong>先頭のインベーダーと同じ数字</strong>に照準を合わせてFIREで撃墜（数字ぶんの得点、0は10点）。数字がちがうと弾は外れ、<strong>敵が1マス前進</strong>してしまいます。基地（左端）まで攻め込まれるとハートが減り、3回でゲームオーバー。ときどき現れるUFO「n」は<strong>どの数字でも撃ち落とせて100点</strong>。16機撃墜でステージクリア、ハートが回復して行進が速くなります。MODEを押せばふつうの8桁電卓としても使えます。</p>
+</div>
+
+<script>
+(function(){
+"use strict";
+var $=function(s){return document.querySelector(s)};
+
+/* ================= 7-SEGMENT DISPLAY ================= */
+var SEGMAP={
+ "0":"abcdef","1":"bc","2":"abdeg","3":"abcdg","4":"bcfg","5":"acdfg","6":"acdefg",
+ "7":"abc","8":"abcdefg","9":"abcdfg","-":"g"," ":"","E":"adefg","o":"cdeg","H":"bcefg",
+ "L":"def","P":"abefg","A":"abcefg","C":"adef","U":"bcdef","r":"eg","n":"ceg","d":"bcdeg","F":"aefg","I":"ef"
+};
+var SEGRECT={
+ a:[3,0,16,5], b:[17,3,5,16], c:[17,21,5,16], d:[3,35,16,5],
+ e:[0,21,5,16], f:[0,3,5,16], g:[3,18,16,4]
+};
+var NDIG=8, segEls=[];
+(function buildDisplay(){
+ var svg=$("#segsvg"), ns="http://www.w3.org/2000/svg";
+ for(var i=0;i<NDIG;i++){
+   var g=document.createElementNS(ns,"g");
+   g.setAttribute("transform","translate("+(4+i*29)+",3) skewX(-6)");
+   var digit={};
+   for(var s in SEGRECT){
+     var r=SEGRECT[s], el=document.createElementNS(ns,"rect");
+     el.setAttribute("x",r[0]); el.setAttribute("y",r[1]);
+     el.setAttribute("width",r[2]); el.setAttribute("height",r[3]);
+     el.setAttribute("rx",1.5); el.setAttribute("fill","var(--ghost)");
+     g.appendChild(el); digit[s]=el;
+   }
+   var dp=document.createElementNS(ns,"circle");
+   dp.setAttribute("cx",25.5); dp.setAttribute("cy",38); dp.setAttribute("r",2.4);
+   dp.setAttribute("fill","var(--ghost)");
+   g.appendChild(dp); digit.dp=dp;
+   svg.appendChild(g); segEls.push(digit);
+ }
+})();
+function setDisplay(str){
+ str=String(str);
+ var cells=[],i;
+ for(i=0;i<str.length;i++){
+   var ch=str[i];
+   if(ch==="."&&cells.length){cells[cells.length-1].dp=true;}
+   else cells.push({ch:ch,dp:false});
+ }
+ while(cells.length<NDIG)cells.unshift({ch:" ",dp:false});
+ if(cells.length>NDIG)cells=cells.slice(cells.length-NDIG);
+ for(i=0;i<NDIG;i++){
+   var on=SEGMAP[cells[i].ch]||"";
+   for(var s in SEGRECT)
+     segEls[i][s].setAttribute("fill",on.indexOf(s)>=0?"var(--seg)":"var(--ghost)");
+   segEls[i].dp.setAttribute("fill",cells[i].dp?"var(--seg)":"var(--ghost)");
+ }
+}
+
+/* ================= ARENA (status panel) ================= */
+var INV='<rect x="-8" y="-10" width="16" height="7" rx="1"/>'+
+        '<rect x="-11" y="-6" width="22" height="6" rx="1"/>'+
+        '<rect x="-11" y="1" width="4" height="4"/><rect x="7" y="1" width="4" height="4"/>'+
+        '<rect x="-4" y="1" width="3" height="3"/><rect x="1" y="1" width="3" height="3"/>';
+(function buildArena(){
+ var h='',i;
+ /* printed panel art: marching invaders (bottom) & base cannon (left) */
+ for(i=0;i<5;i++){
+   h+='<g transform="translate('+(210+i*38)+',100)" fill="var(--print)">'+INV+'</g>';
+ }
+ h+='<g fill="var(--print)">'+
+    '<rect x="24" y="96" width="30" height="7" rx="2"/>'+
+    '<rect x="34" y="90" width="10" height="6" rx="1"/>'+
+    '<rect x="37.5" y="84" width="3" height="6"/>'+
+    '</g>';
+ h+='<text x="64" y="103" class="lcdtxt" font-size="9" letter-spacing="2" style="fill:var(--print)">BASE</text>';
+ h+='<line x1="16" y1="76" x2="384" y2="76" stroke="var(--print)" stroke-width="1.5"/>';
+ /* hearts (top-left) + stage label (top-right) */
+ h+='<g id="php">';
+ for(i=0;i<3;i++)h+='<rect x="'+(24+i*15)+'" y="18" width="11" height="11" rx="2" transform="rotate(45 '+(29.5+i*15)+' 23.5)"/>';
+ h+='</g>';
+ h+='<text id="stg" x="376" y="26" text-anchor="end" class="lcdtxt" font-size="13" letter-spacing="1"></text>';
+ /* score (center) */
+ h+='<text id="sclabel" x="200" y="20" text-anchor="middle" class="lcdtxt" font-size="9" letter-spacing="3"></text>';
+ h+='<text id="sc" x="200" y="44" text-anchor="middle" class="lcdtxt" font-size="22" letter-spacing="2"></text>';
+ /* message texts */
+ h+='<text id="msg" x="200" y="46" text-anchor="middle" class="lcdtxt" font-size="24" letter-spacing="3"></text>';
+ h+='<text id="msg2" x="200" y="66" text-anchor="middle" class="lcdtxt" font-size="11" letter-spacing="2"></text>';
+ $("#arena").innerHTML=h;
+})();
+function setHP(id,n){
+ var g=document.getElementById(id),i,kids=g.children;
+ for(i=0;i<kids.length;i++)kids[i].setAttribute("fill",i<n?"var(--seg)":"var(--ghost)");
+}
+function setTxt(id,t){ document.getElementById(id).textContent=t||""; }
+function setMsg(t,t2){ setTxt("msg",t); setTxt("msg2",t2); }
+
+/* ================= SOUND (piezo beeper) ================= */
+var actx=null, muted=false;
+function ac(){ if(!actx){ try{actx=new (window.AudioContext||window.webkitAudioContext)();}catch(e){} } if(actx&&actx.state==="suspended")actx.resume(); return actx; }
+function beep(freq,dur,delay,vol){
+ if(muted)return; var c=ac(); if(!c)return;
+ dur=dur||0.05; delay=delay||0; vol=vol||0.12;
+ var t=c.currentTime+delay, o=c.createOscillator(), g=c.createGain();
+ o.type="square"; o.frequency.value=freq;
+ g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+ o.connect(g); g.connect(c.destination); o.start(t); o.stop(t+dur+0.02);
+}
+var SND={
+ key:function(){beep(2200,0.02,0,0.06);},
+ aim:function(){beep(1568,0.025,0,0.09);},
+ hit:function(){beep(880,0.04,0,0.16);beep(1319,0.05,0.04,0.16);},
+ ufo:function(){beep(988,0.05,0,0.16);beep(1319,0.05,0.05,0.16);beep(1760,0.07,0.1,0.16);},
+ miss:function(){beep(262,0.05,0,0.12);beep(196,0.07,0.05,0.12);},
+ crash:function(){beep(147,0.14,0,0.2);beep(110,0.2,0.12,0.2);},
+ step:function(hi){beep(hi?117:98,0.045,0,0.07);},
+ stage:function(){[523,659,784,1047].forEach(function(f,i){beep(f,0.09,i*0.1);});},
+ over:function(){[392,330,262,196].forEach(function(f,i){beep(f,0.16,i*0.17,0.15);});}
+};
+$("#muteBtn").addEventListener("click",function(){
+ muted=!muted; this.setAttribute("aria-pressed",muted?"true":"false");
+ if(!muted)SND.key();
+});
+
+/* ================= CALCULATOR ================= */
+var calc={cur:"0",acc:null,op:null,fresh:true};
+function fmt(v){
+ if(!isFinite(v))return "E";
+ var neg=v<0, a=Math.abs(v), maxD=neg?7:8;
+ if(a>=Math.pow(10,maxD))return "E";
+ var intLen=Math.max(1,Math.floor(Math.log10(a||1))+1);
+ var s=a.toFixed(Math.max(0,maxD-intLen));
+ if(s.indexOf(".")>=0)s=s.replace(/0+$/,"").replace(/\.$/,"");
+ return (neg?"-":"")+s;
+}
+function calcCompute(){
+ if(calc.op===null||calc.acc===null)return;
+ var a=calc.acc,b=parseFloat(calc.cur),r;
+ switch(calc.op){case"+":r=a+b;break;case"-":r=a-b;break;case"*":r=a*b;break;case"/":r=b===0?Infinity:a/b;break;}
+ calc.cur=fmt(r); calc.acc=null; calc.op=null; calc.fresh=true;
+}
+function calcKey(k){
+ SND.key();
+ if(k==="AC"){calc={cur:"0",acc:null,op:null,fresh:true};}
+ else if(k>="0"&&k<="9"){
+   if(calc.fresh||calc.cur==="0"){calc.cur=k;calc.fresh=false;}
+   else if(calc.cur.replace(/[-.]/g,"").length<8)calc.cur+=k;
+ }
+ else if(k==="."){
+   if(calc.fresh){calc.cur="0.";calc.fresh=false;}
+   else if(calc.cur.indexOf(".")<0)calc.cur+=".";
+ }
+ else if(k==="%"){calc.cur=fmt(parseFloat(calc.cur)/100);calc.fresh=true;}
+ else if(k==="+"||k==="-"||k==="*"||k==="/"){
+   if(calc.op!==null&&!calc.fresh)calcCompute();
+   calc.acc=parseFloat(calc.cur); calc.op=k; calc.fresh=true;
+ }
+ else if(k==="="){calcCompute();}
+ setDisplay(calc.cur);
+}
+
+/* ================= GAME ================= */
+/* field: 6 cells (display digits 2..7). Invaders enter at cell 5, march left.
+   cell value: null | {v:0..9} | {v:"U"} (UFO). */
+var HISCORE_KEY="di80hi";
+var NCELL=6;
+var G={
+ mode:"game", state:"title",
+ score:0, hi:parseInt(localStorage.getItem(HISCORE_KEY)||"0",10)||0,
+ stage:1, hearts:3, kills:0, aim:0,
+ cells:[], booms:[], beat:false,
+ marchT:0, phaseT:0, crashT:0
+};
+for(var c0=0;c0<NCELL;c0++)G.cells.push(null);
+function speed(){return 1+(G.stage-1)*0.15;}
+function marchIv(){return 900/speed();}
+function now(){return performance.now();}
+
+function clearField(){ for(var i=0;i<NCELL;i++)G.cells[i]=null; G.booms=[]; }
+function startGame(){ G.score=0; G.stage=1; startStage(); }
+function startStage(){
+ G.hearts=3; G.kills=0; G.aim=0; clearField();
+ G.state="intro"; G.phaseT=now()+1500; SND.stage();
+}
+function gameOver(){
+ G.state="over"; SND.over(); clearField();
+ if(G.score>G.hi){G.hi=G.score; try{localStorage.setItem(HISCORE_KEY,String(G.hi));}catch(e){}}
+}
+function loseHeart(){
+ G.hearts--; G.crashT=now()+600; SND.crash();
+ if(G.hearts<=0)gameOver();
+}
+function spawn(){
+ if(G.cells[NCELL-1]!==null)return;
+ var empty=true,i;
+ for(i=0;i<NCELL;i++)if(G.cells[i]!==null){empty=false;break;}
+ if(!empty&&Math.random()>0.55)return;
+ G.cells[NCELL-1]=Math.random()<0.08?{v:"U"}:{v:Math.floor(Math.random()*10)};
+}
+function march(){
+ /* front invader steps into the base -> crash */
+ if(G.cells[0]!==null){
+   G.cells[0]=null; loseHeart();
+   if(G.state!=="fight")return;
+ }
+ for(var i=0;i<NCELL-1;i++)G.cells[i]=G.cells[i+1];
+ G.cells[NCELL-1]=null;
+ spawn();
+ G.beat=!G.beat; SND.step(G.beat);
+}
+function fire(){
+ var i,front=-1;
+ for(i=0;i<NCELL;i++)if(G.cells[i]!==null){front=i;break;}
+ if(front<0){SND.miss();return;}
+ var inv=G.cells[front];
+ if(inv.v==="U"||inv.v===G.aim){
+   G.cells[front]=null;
+   G.booms.push({cell:front,until:now()+170});
+   if(inv.v==="U"){G.score+=100*G.stage; SND.ufo();}
+   else{G.score+=(inv.v===0?10:inv.v)*G.stage; SND.hit();}
+   G.kills++;
+   if(G.kills>=16){
+     G.score+=100*G.stage; G.stage++; startStage(); return;
+   }
+ }else{
+   /* miss: the whole wave lurches forward */
+   SND.miss();
+   march();
+ }
+}
+
+function tick(){
+ var t=now();
+ if(G.mode==="game"){
+  if(G.state==="intro"&&t>=G.phaseT){
+    G.state="fight"; G.marchT=t+400; spawn();
+  }
+  else if(G.state==="fight"){
+    G.booms=G.booms.filter(function(b){return t<b.until;});
+    if(t>=G.marchT){
+      march();
+      if(G.state==="fight")G.marchT=t+marchIv();
+    }
+  }
+ }
+ render(t);
+}
+
+/* ================= RENDER ================= */
+function render(t){
+ var slowBlink=Math.floor(t/500)%2===0;
+ var fastBlink=Math.floor(t/90)%2===0;
+
+ if(G.mode==="calc"){
+   setHP("php",0);
+   setTxt("stg",""); setTxt("sclabel",""); setTxt("sc","");
+   setMsg("","");
+   return; /* display was set by calcKey */
+ }
+
+ /* --- 7seg display --- */
+ if(G.state==="fight"||G.state==="intro"){
+   var s=String(G.aim);
+   s+=(G.crashT>t&&fastBlink)?" ":"-";
+   for(var i=0;i<NCELL;i++){
+     var boom=false,bi;
+     for(bi=0;bi<G.booms.length;bi++)if(G.booms[bi].cell===i){boom=true;break;}
+     if(boom)s+=fastBlink?"8":" ";
+     else if(G.cells[i]===null)s+=" ";
+     else if(G.cells[i].v==="U")s+="n";
+     else s+=String(G.cells[i].v);
+   }
+   setDisplay(s);
+ }
+ else if(G.state==="title")setDisplay(String(G.hi));
+ else setDisplay(String(G.score));
+
+ /* --- hearts & stage --- */
+ setHP("php",G.state==="title"?0:G.hearts);
+ setTxt("stg",(G.state==="fight"||G.state==="intro")?("S"+G.stage):"");
+
+ /* --- score & messages --- */
+ if(G.state==="fight"){
+   setTxt("sclabel","SCORE");
+   setTxt("sc",String(G.score));
+   setMsg("","");
+ }else{
+   setTxt("sclabel",""); setTxt("sc","");
+   if(G.state==="title")setMsg("INVADER",slowBlink?"PUSH AC KEY":"");
+   else if(G.state==="intro")setMsg("STAGE "+G.stage,"");
+   else setMsg("GAME OVER",slowBlink?"PUSH AC KEY":("HI "+G.hi));
+ }
+}
+
+/* ================= INPUT ================= */
+function press(k){
+ ac(); /* unlock audio on first gesture */
+ if(k==="MODE"){
+   G.mode=G.mode==="game"?"calc":"game";
+   $("#modeLabel").textContent=G.mode==="game"?"Game Mode":"Calculator";
+   SND.key();
+   if(G.mode==="calc")setDisplay(calc.cur);
+   else{G.state="title";}
+   return;
+ }
+ if(G.mode==="calc"){calcKey(k);return;}
+ /* game mode */
+ if(k==="AC"){
+   SND.key();
+   if(G.state==="title"||G.state==="over")startGame();
+   else G.state="title"; /* AC mid-game = reset to title */
+   return;
+ }
+ if(G.state!=="fight"){SND.key();return;}
+ if(k==="."){G.aim=(G.aim+1)%10; SND.aim();}
+ else if(k>="0"&&k<="9"){G.aim=parseInt(k,10); SND.aim();}
+ else if(k==="+"||k==="="){fire();}
+ else SND.key();
+}
+
+document.querySelectorAll(".key").forEach(function(btn){
+ btn.addEventListener("pointerdown",function(ev){
+   ev.preventDefault();
+   btn.classList.add("pressed");
+   press(btn.getAttribute("data-k"));
+ });
+ ["pointerup","pointerleave","pointercancel"].forEach(function(evn){
+   btn.addEventListener(evn,function(){btn.classList.remove("pressed");});
+ });
+ btn.addEventListener("keydown",function(ev){
+   if(ev.key==="Enter"||ev.key===" "){ev.preventDefault();press(btn.getAttribute("data-k"));}
+ });
+});
+
+var KEYMAP={
+ "0":"0","1":"1","2":"2","3":"3","4":"4","5":"5","6":"6","7":"7","8":"8","9":"9",
+ ".":".","+":"+","-":"-","*":"*","/":"/","%":"%","=":"=","Enter":"=",
+ " ":"+",
+ "a":"AC","Escape":"AC","m":"MODE"
+};
+document.addEventListener("keydown",function(ev){
+ if(ev.repeat)return;
+ if(ev.target&&ev.target.classList&&ev.target.classList.contains("key"))return;
+ var k=KEYMAP[ev.key]||KEYMAP[ev.key.toLowerCase()];
+ if(!k)return;
+ if(ev.key===" ")ev.preventDefault();
+ var btn=document.querySelector('.key[data-k="'+k+'"]');
+ if(btn){btn.classList.add("pressed");setTimeout(function(){btn.classList.remove("pressed");},110);}
+ press(k);
+});
+
+/* boot — rAF for smoothness, interval as fallback when rAF is throttled */
+setDisplay(String(G.hi));
+(function loop(){ tick(); requestAnimationFrame(loop); })();
+setInterval(tick,120);
+})();
+</script>
