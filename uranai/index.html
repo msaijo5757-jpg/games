@@ -1,0 +1,639 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UR-80 占い電卓</title>
+<style>
+  :root{
+    --pg-bg:#e6e4ec;
+    --pg-ink:#3a3448;
+    --pg-sub:#857d92;
+    /* device (fixed, single visual world) — twilight violet & starlight gold */
+    --body:#241a3a; --body-hi:#31264d; --body-lo:#160f26;
+    --plate:#ddd4ea; --plate-ink:#332a45;
+    --bezel:#120c1e;
+    --lcd:#aab6c6; --lcd-deep:#98a5b7;
+    --seg:#212a3c;
+    --ghost:rgba(33,42,60,.075);
+    --print:rgba(33,42,60,.36);
+    --key:#3a2c58; --key-hi:#4a3a6e; --key-ink:#efeaf6;
+    --key-acc:#c9a23a; --key-acc-hi:#e2bb4e;
+    --legend:#e6c766;
+    --brand-gold:#e6c766;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --pg-bg:#14111c; --pg-ink:#cbc4d6; --pg-sub:#7b7488; }
+  }
+  :root[data-theme="dark"]{ --pg-bg:#14111c; --pg-ink:#cbc4d6; --pg-sub:#7b7488; }
+  :root[data-theme="light"]{ --pg-bg:#e6e4ec; --pg-ink:#3a3448; --pg-sub:#857d92; }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0; min-height:100vh;
+    background:var(--pg-bg);
+    background-image:radial-gradient(ellipse 120% 80% at 50% 0%, rgba(255,255,255,.06), transparent 60%);
+    display:flex; flex-direction:column; align-items:center;
+    font-family:"Helvetica Neue",Helvetica,Arial,"Hiragino Kaku Gothic ProN",Meiryo,sans-serif;
+    color:var(--pg-ink);
+    padding:28px 12px 48px;
+  }
+  .strap{
+    font-size:11px; letter-spacing:.28em; text-transform:uppercase;
+    color:var(--pg-sub); margin:0 0 16px; text-align:center;
+  }
+
+  /* ============ DEVICE ============ */
+  .device{
+    width:min(400px,96vw);
+    background:linear-gradient(160deg,var(--body-hi) 0%,var(--body) 30%,var(--body) 70%,var(--body-lo) 100%);
+    border-radius:18px;
+    padding:14px 16px 20px;
+    box-shadow:
+      0 2px 0 rgba(255,255,255,.08) inset,
+      0 -3px 8px rgba(0,0,0,.5) inset,
+      0 18px 40px rgba(0,0,0,.35),
+      0 4px 10px rgba(0,0,0,.25);
+    user-select:none; -webkit-user-select:none;
+    touch-action:manipulation;
+  }
+
+  .topbar{display:flex; align-items:flex-end; justify-content:space-between; margin:2px 2px 10px;}
+  .brand{line-height:1}
+  .brand .logo{
+    font-style:italic; font-weight:800; font-size:22px; letter-spacing:.02em;
+    color:#efeaf6; text-shadow:0 1px 0 rgba(0,0,0,.6);
+  }
+  .brand .logo em{font-style:normal; color:var(--brand-gold)}
+  .brand .model{
+    font-size:9px; letter-spacing:.3em; color:#9a8db0; margin-top:4px; text-transform:uppercase;
+  }
+  .speaker{display:flex; gap:10px; align-items:center;}
+  .grille{display:grid; grid-template-columns:repeat(6,4px); gap:3px;}
+  .grille i{width:4px;height:4px;border-radius:50%;background:#0e0818;box-shadow:0 1px 0 rgba(255,255,255,.08)}
+  .mute{
+    appearance:none; border:0; cursor:pointer;
+    font-size:8px; letter-spacing:.12em; color:#e6dcf0;
+    background:linear-gradient(#4a3a6e,#2c2044);
+    border-radius:4px; padding:4px 7px;
+    box-shadow:0 1px 0 rgba(255,255,255,.15) inset,0 2px 3px rgba(0,0,0,.5);
+  }
+  .mute[aria-pressed="true"]{color:#7d6f92; box-shadow:0 1px 3px rgba(0,0,0,.6) inset}
+  .mute:focus-visible{outline:2px solid var(--legend); outline-offset:2px}
+
+  /* metal plate around screen */
+  .plate{
+    background:linear-gradient(175deg,#ece4f6,var(--plate) 40%,#c4bad6);
+    border-radius:10px; padding:10px 12px 12px;
+    box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 -1px 0 rgba(0,0,0,.25) inset,0 2px 4px rgba(0,0,0,.45);
+  }
+  .plate-row{display:flex; justify-content:space-between; align-items:baseline; margin:0 2px 8px;}
+  .plate-row .t1{font-size:10px; font-weight:700; letter-spacing:.3em; color:var(--plate-ink); text-transform:uppercase;}
+  .plate-row .t2{font-size:8px; letter-spacing:.2em; color:#6d6078; text-transform:uppercase;}
+
+  .screen{
+    background:
+      linear-gradient(178deg, rgba(255,255,255,.25), rgba(255,255,255,0) 12%),
+      linear-gradient(160deg, var(--lcd), var(--lcd-deep));
+    border:3px solid var(--bezel);
+    border-radius:6px;
+    box-shadow:0 3px 8px rgba(0,0,0,.35) inset, 0 1px 0 rgba(255,255,255,.4);
+    padding:8px 10px 4px;
+  }
+  .sevenseg{display:block; width:100%; height:auto;}
+  .arena{display:block; width:100%; height:auto; margin-top:2px;}
+
+  .lcdtxt{
+    font-family:"Courier New",ui-monospace,monospace;
+    font-weight:700;
+    fill:var(--seg);
+  }
+  .balltxt{font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif; font-weight:800; font-size:30px; fill:var(--seg);}
+  .starstxt{font-size:15px; fill:var(--seg); letter-spacing:2px;}
+  .msgtxt{font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif; font-weight:600; font-size:10.5px; fill:var(--seg);}
+
+  /* ============ KEYPAD ============ */
+  .keypad{
+    margin-top:14px;
+    display:grid; grid-template-columns:repeat(4,1fr); gap:9px;
+  }
+  .key{
+    appearance:none; border:0; cursor:pointer;
+    position:relative;
+    height:44px; border-radius:7px;
+    background:linear-gradient(178deg,var(--key-hi),var(--key) 45%,#2a1e42);
+    color:var(--key-ink);
+    font-family:inherit; font-size:16px; font-weight:700;
+    box-shadow:
+      0 1px 0 rgba(255,255,255,.18) inset,
+      0 -2px 0 rgba(0,0,0,.35) inset,
+      0 3px 0 #1c1330,
+      0 5px 6px rgba(0,0,0,.4);
+    transition:transform .04s ease, box-shadow .04s ease;
+  }
+  .key:active,.key.pressed{
+    transform:translateY(2px);
+    box-shadow:0 1px 0 rgba(255,255,255,.12) inset,0 -1px 0 rgba(0,0,0,.35) inset,0 1px 0 #1c1330,0 2px 3px rgba(0,0,0,.4);
+  }
+  .key:focus-visible{outline:2px solid var(--legend); outline-offset:2px}
+  .key.gold{background:linear-gradient(178deg,var(--key-acc-hi),var(--key-acc) 45%,#8f6a1e); color:#3a2a0e; box-shadow:0 1px 0 rgba(255,255,255,.35) inset,0 -2px 0 rgba(0,0,0,.25) inset,0 3px 0 #6e5116,0 5px 6px rgba(0,0,0,.4);}
+  .key.gold:active,.key.gold.pressed{box-shadow:0 1px 0 rgba(255,255,255,.2) inset,0 -1px 0 rgba(0,0,0,.25) inset,0 1px 0 #6e5116,0 2px 3px rgba(0,0,0,.4)}
+  .key .legend{
+    position:absolute; top:3px; left:0; right:0;
+    font-size:7.5px; font-weight:700; letter-spacing:.08em;
+    color:var(--legend); text-transform:uppercase;
+  }
+  .key.gold .legend{color:#4d3a12}
+  .key .cap{display:block; margin-top:6px;}
+  .key.op .cap{font-size:18px}
+  .footprint{
+    margin-top:12px; text-align:center;
+    font-size:8px; letter-spacing:.22em; color:#8a7da0; text-transform:uppercase;
+  }
+
+  /* ============ OMIKUJI RESULT STRIP ============ */
+  .omikuji{
+    width:min(400px,96vw); margin-top:20px;
+    background:linear-gradient(180deg,#fbf7ee,#f3ecdd);
+    border:1px solid #d8ccb0;
+    border-radius:12px;
+    box-shadow:0 8px 22px rgba(0,0,0,.14), 0 1px 0 rgba(255,255,255,.7) inset;
+    padding:16px 18px 18px;
+    color:#3a3226;
+    display:none;
+    font-feature-settings:"palt";
+  }
+  .omikuji.show{display:block; animation:rise .45s ease both}
+  @keyframes rise{from{opacity:0; transform:translateY(8px)} to{opacity:1; transform:none}}
+  @media (prefers-color-scheme: dark){
+    .omikuji{background:linear-gradient(180deg,#241f2e,#1c1826); border-color:#3a3350; color:#d8d1e2; box-shadow:0 8px 22px rgba(0,0,0,.5),0 1px 0 rgba(255,255,255,.05) inset;}
+  }
+  :root[data-theme="dark"] .omikuji{background:linear-gradient(180deg,#241f2e,#1c1826); border-color:#3a3350; color:#d8d1e2;}
+  :root[data-theme="light"] .omikuji{background:linear-gradient(180deg,#fbf7ee,#f3ecdd); border-color:#d8ccb0; color:#3a3226;}
+  .ohead{text-align:center; font-size:11px; letter-spacing:.28em; color:#9a8f78; margin-bottom:8px;}
+  @media (prefers-color-scheme: dark){ .ohead{color:#8b83a0} }
+  .orank{text-align:center; font-size:44px; font-weight:900; line-height:1; letter-spacing:.06em;}
+  .ostars{text-align:center; font-size:20px; letter-spacing:4px; margin-top:6px; color:#d4a72c;}
+  .omsg{text-align:center; font-size:14px; line-height:1.7; margin:12px 4px 14px; font-weight:600;}
+  .odiv{height:1px; background:repeating-linear-gradient(90deg,currentColor 0 4px,transparent 4px 8px); opacity:.22; margin:12px 0;}
+  .ogrid{display:grid; grid-template-columns:auto 1fr; gap:7px 12px; font-size:13px;}
+  .ogrid dt{color:#9a8f78; white-space:nowrap;}
+  @media (prefers-color-scheme: dark){ .ogrid dt{color:#8b83a0} }
+  .ogrid dd{margin:0; font-weight:700; text-align:right;}
+  .ocats{display:grid; grid-template-columns:1fr 1fr; gap:8px 16px; margin-top:14px;}
+  .ocat{display:flex; justify-content:space-between; align-items:baseline; font-size:13px;}
+  .ocat span:first-child{color:#9a8f78}
+  @media (prefers-color-scheme: dark){ .ocat span:first-child{color:#8b83a0} }
+  .ocat .cs{font-size:12px; letter-spacing:2px; color:#d4a72c; font-weight:700;}
+
+  /* ============ PAGE CAPTION ============ */
+  .caption{
+    width:min(400px,96vw); margin-top:22px;
+    font-size:12.5px; line-height:1.9; color:var(--pg-ink);
+  }
+  .caption h2{font-size:12px; letter-spacing:.2em; text-transform:uppercase; color:var(--pg-sub); margin:0 0 6px; font-weight:700;}
+  .caption table{border-collapse:collapse; width:100%; font-variant-numeric:tabular-nums;}
+  .caption td{padding:3px 8px 3px 0; vertical-align:top;}
+  .caption td.k{white-space:nowrap; font-family:ui-monospace,"Courier New",monospace; font-weight:700;}
+  .caption p{margin:10px 0 0;}
+</style>
+
+<p class="strap">Handheld LCD Fortune &middot; circa 1980</p>
+
+<div class="device" id="device">
+  <div class="topbar">
+    <div class="brand">
+      <div class="logo">UR-80<em>&#10022;</em></div>
+      <div class="model">Fortune Teller &amp; Calculator</div>
+    </div>
+    <div class="speaker">
+      <button class="mute" id="muteBtn" aria-pressed="false" title="サウンド切替">SOUND</button>
+      <div class="grille" aria-hidden="true">
+        <i></i><i></i><i></i><i></i><i></i><i></i>
+        <i></i><i></i><i></i><i></i><i></i><i></i>
+        <i></i><i></i><i></i><i></i><i></i><i></i>
+      </div>
+    </div>
+  </div>
+
+  <div class="plate">
+    <div class="plate-row">
+      <span class="t1" id="plateTitle">Uranai</span>
+      <span class="t2" id="modeLabel">Fortune Mode</span>
+    </div>
+    <div class="screen">
+      <svg class="sevenseg" id="segsvg" viewBox="0 0 236 46" aria-hidden="true"></svg>
+      <svg class="arena" id="arena" viewBox="0 0 400 190" aria-hidden="true"></svg>
+    </div>
+  </div>
+
+  <div class="keypad" id="keypad">
+    <button class="key gold" data-k="MODE"><span class="cap" style="font-size:11px">MODE</span></button>
+    <button class="key gold" data-k="AC"><span class="legend">占う</span><span class="cap">AC</span></button>
+    <button class="key op" data-k="%"><span class="cap">%</span></button>
+    <button class="key op" data-k="/"><span class="cap">&divide;</span></button>
+
+    <button class="key" data-k="7"><span class="cap">7</span></button>
+    <button class="key" data-k="8"><span class="cap">8</span></button>
+    <button class="key" data-k="9"><span class="cap">9</span></button>
+    <button class="key op" data-k="*"><span class="cap">&times;</span></button>
+
+    <button class="key" data-k="4"><span class="cap">4</span></button>
+    <button class="key" data-k="5"><span class="cap">5</span></button>
+    <button class="key" data-k="6"><span class="cap">6</span></button>
+    <button class="key op" data-k="-"><span class="cap">&minus;</span></button>
+
+    <button class="key" data-k="1"><span class="cap">1</span></button>
+    <button class="key" data-k="2"><span class="cap">2</span></button>
+    <button class="key" data-k="3"><span class="cap">3</span></button>
+    <button class="key op" data-k="+"><span class="cap">+</span></button>
+
+    <button class="key" data-k="0"><span class="cap">0</span></button>
+    <button class="key" data-k="."><span class="cap">&middot;</span></button>
+    <button class="key op" data-k="=" style="grid-column:span 2"><span class="legend">占う / =</span><span class="cap">=</span></button>
+  </div>
+
+  <div class="footprint">Electronic Fortune Teller &middot; Made for Nostalgia</div>
+</div>
+
+<div class="omikuji" id="strip" aria-live="polite"></div>
+
+<div class="caption">
+  <h2>あそびかた</h2>
+  <table>
+    <tr><td class="k">AC / =</td><td>占う（MODEで電卓⇄占い切替）</td></tr>
+    <tr><td class="k">0-9</td><td>あなたの数字（誕生日・年齢・好きな数）を入れてから占う</td></tr>
+    <tr><td class="k">&middot;</td><td>入れた数字をクリア</td></tr>
+  </table>
+  <p>水晶玉に「占」の文字。<strong>AC（占う）</strong>を押すと玉がきらめき、今日の運勢が浮かび上がります。<strong>大吉・中吉・小吉・吉・末吉・凶・大凶</strong>の運勢に、ラッキーナンバー／カラー／アイテム／方位、恋愛・仕事・金運・健康の星、そしてひとことメッセージまで。先に数字（誕生日など）を入れてから占うと、<strong>その数字だけの“あなた専用”の運勢</strong>になります（同じ数字なら今日は同じ結果）。数字を入れずに占えば、押すたびに変わる今日の運試し。<strong>MODE</strong>を押せば、ふつうの8桁電卓としても使えます。</p>
+</div>
+
+<script>
+(function(){
+"use strict";
+var $=function(s){return document.querySelector(s)};
+
+/* ================= 7-SEGMENT DISPLAY ================= */
+var SEGMAP={
+ "0":"abcdef","1":"bc","2":"abdeg","3":"abcdg","4":"bcfg","5":"acdfg","6":"acdefg",
+ "7":"abc","8":"abcdefg","9":"abcdfg","-":"g"," ":"","E":"adefg","o":"cdeg","H":"bcefg",
+ "L":"def","P":"abefg","A":"abcefg","C":"adef","U":"bcdef","r":"eg","n":"ceg","d":"bcdeg","F":"aefg","I":"ef"
+};
+var SEGRECT={
+ a:[3,0,16,5], b:[17,3,5,16], c:[17,21,5,16], d:[3,35,16,5],
+ e:[0,21,5,16], f:[0,3,5,16], g:[3,18,16,4]
+};
+var NDIG=8, segEls=[];
+(function buildDisplay(){
+ var svg=$("#segsvg"), ns="http://www.w3.org/2000/svg";
+ for(var i=0;i<NDIG;i++){
+   var g=document.createElementNS(ns,"g");
+   g.setAttribute("transform","translate("+(4+i*29)+",3) skewX(-6)");
+   var digit={};
+   for(var s in SEGRECT){
+     var r=SEGRECT[s], el=document.createElementNS(ns,"rect");
+     el.setAttribute("x",r[0]); el.setAttribute("y",r[1]);
+     el.setAttribute("width",r[2]); el.setAttribute("height",r[3]);
+     el.setAttribute("rx",1.5); el.setAttribute("fill","var(--ghost)");
+     g.appendChild(el); digit[s]=el;
+   }
+   var dp=document.createElementNS(ns,"circle");
+   dp.setAttribute("cx",25.5); dp.setAttribute("cy",38); dp.setAttribute("r",2.4);
+   dp.setAttribute("fill","var(--ghost)");
+   g.appendChild(dp); digit.dp=dp;
+   svg.appendChild(g); segEls.push(digit);
+ }
+})();
+function setDisplay(str){
+ str=String(str);
+ var cells=[],i;
+ for(i=0;i<str.length;i++){
+   var ch=str[i];
+   if(ch==="."&&cells.length){cells[cells.length-1].dp=true;}
+   else cells.push({ch:ch,dp:false});
+ }
+ while(cells.length<NDIG)cells.unshift({ch:" ",dp:false});
+ if(cells.length>NDIG)cells=cells.slice(cells.length-NDIG);
+ for(i=0;i<NDIG;i++){
+   var on=SEGMAP[cells[i].ch]||"";
+   for(var s in SEGRECT)
+     segEls[i][s].setAttribute("fill",on.indexOf(s)>=0?"var(--seg)":"var(--ghost)");
+   segEls[i].dp.setAttribute("fill",cells[i].dp?"var(--seg)":"var(--ghost)");
+ }
+}
+
+/* ================= ARENA (crystal ball) ================= */
+var STARPOS=[];
+(function buildArena(){
+ var h='',i;
+ var ns=12;
+ for(i=0;i<ns;i++){ var a=i/ns*Math.PI*2; STARPOS.push([200+Math.round(66*Math.cos(a)),86+Math.round(52*Math.sin(a))]); }
+ /* printed crystal ball + stand */
+ h+='<path d="M182,132 L176,150 L224,150 L218,132" fill="none" stroke="var(--print)" stroke-width="2"/>';
+ h+='<line x1="168" y1="150" x2="232" y2="150" stroke="var(--print)" stroke-width="2"/>';
+ h+='<circle cx="200" cy="86" r="44" fill="none" stroke="var(--print)" stroke-width="2"/>';
+ h+='<path d="M172,74 A26 26 0 0 1 197,57" fill="none" stroke="var(--print)" stroke-width="1.4"/>';
+ /* printed corner stars */
+ h+='<text x="22" y="30" class="lcdtxt" font-size="13" style="fill:var(--print)">&#10022;</text>';
+ h+='<text x="378" y="30" text-anchor="end" class="lcdtxt" font-size="13" style="fill:var(--print)">&#10022;</text>';
+ /* sparkle sprites (LCD ghosting) */
+ for(i=0;i<STARPOS.length;i++)
+   h+='<text id="sp'+i+'" x="'+STARPOS[i][0]+'" y="'+STARPOS[i][1]+'" text-anchor="middle" font-size="11" class="lcdtxt" fill="var(--ghost)">&#10022;</text>';
+ /* dynamic texts */
+ h+='<text id="rankTxt" x="200" y="99" text-anchor="middle" class="balltxt"></text>';
+ h+='<text id="starsTxt" x="200" y="153" text-anchor="middle" class="starstxt"></text>';
+ h+='<text id="msgTxt" x="200" y="175" text-anchor="middle" class="msgtxt"></text>';
+ $("#arena").innerHTML=h;
+})();
+function setMsgTxt(a,b,c){ $("#rankTxt").textContent=a||""; $("#starsTxt").textContent=b||""; $("#msgTxt").textContent=c||""; }
+
+/* ================= SOUND (piezo beeper) ================= */
+var actx=null, muted=false;
+function ac(){ if(!actx){ try{actx=new (window.AudioContext||window.webkitAudioContext)();}catch(e){} } if(actx&&actx.state==="suspended")actx.resume(); return actx; }
+function beep(freq,dur,delay,vol){
+ if(muted)return; var c=ac(); if(!c)return;
+ dur=dur||0.05; delay=delay||0; vol=vol||0.12;
+ var t=c.currentTime+delay, o=c.createOscillator(), g=c.createGain();
+ o.type="square"; o.frequency.value=freq;
+ g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+ o.connect(g); g.connect(c.destination); o.start(t); o.stop(t+dur+0.02);
+}
+var SND={
+ key:function(){beep(2100,0.02,0,0.06);},
+ divine:function(){[523,659,784,988].forEach(function(f,i){beep(f,0.13,i*0.09,0.11);}); beep(196,0.7,0,0.05);},
+ tick:function(){beep(1700,0.012,0,0.03);},
+ great:function(){[523,659,784,1047,1319,1568].forEach(function(f,i){beep(f,0.13,i*0.09,0.15);});
+                  [1047,1319,1568].forEach(function(f,i){beep(f,0.16,0.66+i*0.02,0.14);});},
+ good:function(){[659,784,988].forEach(function(f,i){beep(f,0.12,i*0.08,0.14);});},
+ mid:function(){[587,784].forEach(function(f,i){beep(f,0.12,i*0.1,0.13);});},
+ bad:function(){[440,349].forEach(function(f,i){beep(f,0.14,i*0.12,0.12);});},
+ worst:function(){[330,262,196].forEach(function(f,i){beep(f,0.2,i*0.16,0.13);});}
+};
+$("#muteBtn").addEventListener("click",function(){
+ muted=!muted; this.setAttribute("aria-pressed",muted?"true":"false");
+ if(!muted)SND.key();
+});
+
+/* ================= CALCULATOR ================= */
+var calc={cur:"0",acc:null,op:null,fresh:true};
+function fmt(v){
+ if(!isFinite(v))return "E";
+ var neg=v<0, a=Math.abs(v), maxD=neg?7:8;
+ if(a>=Math.pow(10,maxD))return "E";
+ var intLen=Math.max(1,Math.floor(Math.log10(a||1))+1);
+ var s=a.toFixed(Math.max(0,maxD-intLen));
+ if(s.indexOf(".")>=0)s=s.replace(/0+$/,"").replace(/\.$/,"");
+ return (neg?"-":"")+s;
+}
+function calcCompute(){
+ if(calc.op===null||calc.acc===null)return;
+ var a=calc.acc,b=parseFloat(calc.cur),r;
+ switch(calc.op){case"+":r=a+b;break;case"-":r=a-b;break;case"*":r=a*b;break;case"/":r=b===0?Infinity:a/b;break;}
+ calc.cur=fmt(r); calc.acc=null; calc.op=null; calc.fresh=true;
+}
+function calcKey(k){
+ SND.key();
+ if(k==="AC"){calc={cur:"0",acc:null,op:null,fresh:true};}
+ else if(k>="0"&&k<="9"){
+   if(calc.fresh||calc.cur==="0"){calc.cur=k;calc.fresh=false;}
+   else if(calc.cur.replace(/[-.]/g,"").length<8)calc.cur+=k;
+ }
+ else if(k==="."){
+   if(calc.fresh){calc.cur="0.";calc.fresh=false;}
+   else if(calc.cur.indexOf(".")<0)calc.cur+=".";
+ }
+ else if(k==="%"){calc.cur=fmt(parseFloat(calc.cur)/100);calc.fresh=true;}
+ else if(k==="+"||k==="-"||k==="*"||k==="/"){
+   if(calc.op!==null&&!calc.fresh)calcCompute();
+   calc.acc=parseFloat(calc.cur); calc.op=k; calc.fresh=true;
+ }
+ else if(k==="="){calcCompute();}
+ setDisplay(calc.cur);
+}
+
+/* ================= FORTUNE DATA ================= */
+var RANKS=[
+ {n:"大吉",star:5,w:8, tone:"great"},
+ {n:"中吉",star:4,w:13,tone:"good"},
+ {n:"小吉",star:3,w:16,tone:"good"},
+ {n:"吉",  star:3,w:21,tone:"mid"},
+ {n:"末吉",star:2,w:19,tone:"mid"},
+ {n:"凶",  star:1,w:8, tone:"bad"},
+ {n:"大凶",star:1,w:3, tone:"worst"}
+];
+var COLORS=["赤","青","黄","緑","紫","白","金","桃色","橙","藍","銀","虹色","水色","茶","黒"];
+var ITEMS=["傘","鍵","コーヒー","本","イヤホン","花","帽子","手紙","星のモチーフ","コイン","手袋","甘いもの","青いペン","写真","ハンカチ","マグカップ","くつ下","キャンディ","ミント","鏡"];
+var DIRS=["東","西","南","北","南東","南西","北東","北西"];
+var ACTS=["早寝","部屋の片づけ","ひさしぶりの電話","朝の散歩","甘いものをひとつ","深呼吸を三回","手紙を書く","窓を開けて換気","好きな音楽を聴く","お茶をいれる","背伸びして空を見る","財布の整理"];
+var MSG={
+ great:[
+  "思いきって動けば、道はひらける一日。",
+  "あなたの笑顔が、まわりまで明るくする。",
+  "チャンスは前ぶれなくやってくる。つかんで。",
+  "やりたかったこと、今日こそ始めどき。"],
+ good:[
+  "あせらず進めば、ちゃんと実を結ぶ。",
+  "小さな親切が、大きなご縁を運ぶ。",
+  "ひと言の「ありがとう」が運を呼ぶ。",
+  "いつもの道を、少しだけ遠回りしてみて。"],
+ mid:[
+  "いつも通りが、いちばんの味方。",
+  "ひと休みが、次の一歩を軽くする。",
+  "迷ったら、はじめに浮かんだ方を選んで。",
+  "手もとの一つを、ていねいに。"],
+ bad:[
+  "石橋を叩いて渡れば、こわいものなし。",
+  "うまくいかない日こそ、深呼吸を。",
+  "今日は守りの一手が正解。",
+  "無理せず、早めに切りあげて吉。"],
+ worst:[
+  "そっと家で過ごすのが吉。明日は上向く。",
+  "今日はためる日。動くより休む勇気を。",
+  "小さなミスは笑って流そう。運は巡る。"]
+};
+var TONECOL={great:"#c0392b",good:"#b8860b",mid:"#3f7d4e",bad:"#6a6f7a",worst:"#7a4b6a"};
+
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+var dnow=new Date();
+var dateSeed=dnow.getFullYear()*10000+(dnow.getMonth()+1)*100+dnow.getDate();
+
+function computeFortune(seed,personal){
+ var rng=mulberry32(seed>>>0),i,total=0;
+ for(i=0;i<RANKS.length;i++)total+=RANKS[i].w;
+ var x=rng()*total,ri=0;
+ for(i=0;i<RANKS.length;i++){x-=RANKS[i].w; if(x<0){ri=i;break;}}
+ var rank=RANKS[ri];
+ var luckyNo=1+Math.floor(rng()*98);
+ var color=COLORS[Math.floor(rng()*COLORS.length)];
+ var item=ITEMS[Math.floor(rng()*ITEMS.length)];
+ var dir=DIRS[Math.floor(rng()*DIRS.length)];
+ var act=ACTS[Math.floor(rng()*ACTS.length)];
+ function cat(){var d=[-1,0,0,1][Math.floor(rng()*4)];var v=rank.star+d;return v<1?1:(v>5?5:v);}
+ var love=cat(),work=cat(),money=cat(),health=cat();
+ var pool=MSG[rank.tone];var msg=pool[Math.floor(rng()*pool.length)];
+ return {rank:rank,luckyNo:luckyNo,color:color,item:item,dir:dir,act:act,
+         love:love,work:work,money:money,health:health,msg:msg,personal:personal};
+}
+function starStr(n){var s="",i;for(i=0;i<5;i++)s+=i<n?"★":"☆";return s;}
+
+/* ================= FORTUNE STATE ================= */
+var F={mode:"fortune", state:"title", entered:"", t0:0, pending:null, result:null, num:""};
+
+function now(){return performance.now();}
+function doDivine(){
+ var personal=F.entered!=="";
+ var seed;
+ if(personal){ seed=((parseInt(F.entered,10)+1)*2654435761) ^ (dateSeed*40503); }
+ else { seed=(dateSeed*40503) ^ (Math.floor(Math.random()*2147483647)); }
+ F.pending={seed:seed>>>0,personal:personal,num:F.entered};
+ F.state="divine"; F.t0=now(); hideStrip(); SND.divine();
+}
+function finishDivine(){
+ var p=F.pending;
+ F.result=computeFortune(p.seed,p.personal);
+ F.num=p.num; F.state="reveal"; F.entered="";
+ var tone=F.result.rank.tone;
+ (SND[tone]||SND.mid)();
+ showStrip();
+}
+function hideStrip(){ var s=$("#strip"); s.classList.remove("show"); }
+function showStrip(){
+ var R=F.result, s=$("#strip");
+ var head=R.personal?("◇ あなたの数字 "+F.num+" の運勢 ◇"):"◇ 今日の運勢 ◇";
+ var col=TONECOL[R.rank.tone];
+ var html='';
+ html+='<div class="ohead">'+head+'</div>';
+ html+='<div class="orank" style="color:'+col+'">'+R.rank.n+'</div>';
+ html+='<div class="ostars">'+starStr(R.rank.star)+'</div>';
+ html+='<p class="omsg">「'+R.msg+'」</p>';
+ html+='<div class="odiv"></div>';
+ html+='<dl class="ogrid">';
+ html+='<dt>ラッキーナンバー</dt><dd>'+R.luckyNo+'</dd>';
+ html+='<dt>ラッキーカラー</dt><dd>'+R.color+'</dd>';
+ html+='<dt>ラッキーアイテム</dt><dd>'+R.item+'</dd>';
+ html+='<dt>ラッキー方位</dt><dd>'+R.dir+'</dd>';
+ html+='<dt>きょうの吉行動</dt><dd>'+R.act+'</dd>';
+ html+='</dl>';
+ html+='<div class="ocats">'+
+   cat("恋愛",R.love)+cat("仕事",R.work)+cat("金運",R.money)+cat("健康",R.health)+
+ '</div>';
+ s.innerHTML=html; s.classList.add("show");
+ function cat(name,v){return '<div class="ocat"><span>'+name+'</span><span class="cs">'+starStr(v)+'</span></div>';}
+}
+
+/* ================= RENDER ================= */
+function render(t){
+ var i;
+ if(F.mode==="calc"){
+   for(i=0;i<STARPOS.length;i++)document.getElementById("sp"+i).setAttribute("fill","var(--ghost)");
+   setMsgTxt("","","");
+   return; /* display set by calcKey */
+ }
+ /* --- 7seg --- */
+ if(F.state==="divine"){
+   var sc=""; for(i=0;i<6;i++)sc+=((Math.floor(t/70)+i*7)%10);
+   setDisplay(sc);
+ } else if(F.state==="reveal"){
+   setDisplay(String(F.result.luckyNo));
+ } else {
+   setDisplay(F.entered!==""?F.entered:"UrAnAI");
+ }
+ /* --- ball / texts --- */
+ var slow=Math.floor(t/500)%2===0;
+ if(F.state==="title"){
+   setMsgTxt("占","", F.entered!=="" ? "▶ ウラナウ ハ AC ◀" : (slow?"▶ PUSH  AC ◀":""));
+ } else if(F.state==="divine"){
+   var sym=["？","✦","✧","☆","★"][Math.floor(t/120)%5];
+   setMsgTxt(sym,"", Math.floor(t/300)%2===0?"占い中 . . .":"占い中");
+ } else {
+   var R=F.result;
+   setMsgTxt(R.rank.n, starStr(R.rank.star), R.msg);
+ }
+ /* --- sparkles --- */
+ for(i=0;i<STARPOS.length;i++){
+   var on=false;
+   if(F.state==="divine")on=(Math.floor(t/70)+i)%3===0;
+   else if(F.state==="title")on=(Math.floor(t/320)+i)%5===0;
+   else if(F.state==="reveal"){var tn=F.result.rank.tone; if(tn==="great"||tn==="good")on=(Math.floor(t/240)+i)%3===0;}
+   document.getElementById("sp"+i).setAttribute("fill",on?"var(--seg)":"var(--ghost)");
+ }
+}
+
+/* ================= LOOP ================= */
+function tick(){
+ var t=now();
+ if(F.mode==="fortune"&&F.state==="divine"){
+   var st=Math.floor(t/90);
+   if(st!==tick._sp){tick._sp=st;SND.tick();}
+   if(t>=F.t0+1700)finishDivine();
+ }
+ render(t);
+}
+tick._sp=-1;
+
+/* ================= INPUT ================= */
+function press(k){
+ ac();
+ if(k==="MODE"){
+   F.mode=F.mode==="fortune"?"calc":"fortune";
+   $("#modeLabel").textContent=F.mode==="fortune"?"Fortune Mode":"Calculator";
+   $("#plateTitle").textContent=F.mode==="fortune"?"Uranai":"Calc";
+   SND.key();
+   if(F.mode==="calc"){hideStrip(); setDisplay(calc.cur);}
+   else{F.state="title"; F.entered="";}
+   return;
+ }
+ if(F.mode==="calc"){calcKey(k);return;}
+ /* fortune mode */
+ if(k==="AC"||k==="="){
+   if(F.state==="divine")return;
+   SND.key(); doDivine(); return;
+ }
+ if(k>="0"&&k<="9"){
+   if(F.state==="divine")return;
+   SND.key();
+   if(F.state==="reveal"){F.state="title"; F.entered=""; hideStrip();}
+   if(F.entered.length<6)F.entered+=k;
+   return;
+ }
+ if(k==="."){
+   SND.key();
+   if(F.state==="reveal"){F.state="title"; hideStrip();}
+   F.entered="";
+   return;
+ }
+ SND.key(); /* operators: no-op in fortune mode */
+}
+
+document.querySelectorAll(".key").forEach(function(btn){
+ btn.addEventListener("pointerdown",function(ev){
+   ev.preventDefault();
+   btn.classList.add("pressed");
+   press(btn.getAttribute("data-k"));
+ });
+ ["pointerup","pointerleave","pointercancel"].forEach(function(evn){
+   btn.addEventListener(evn,function(){btn.classList.remove("pressed");});
+ });
+ btn.addEventListener("keydown",function(ev){
+   if(ev.key==="Enter"||ev.key===" "){ev.preventDefault();press(btn.getAttribute("data-k"));}
+ });
+});
+
+var KEYMAP={
+ "0":"0","1":"1","2":"2","3":"3","4":"4","5":"5","6":"6","7":"7","8":"8","9":"9",
+ ".":".","+":"+","-":"-","*":"*","/":"/","%":"%","=":"=","Enter":"="," ":"=",
+ "a":"AC","Escape":"AC","m":"MODE"
+};
+document.addEventListener("keydown",function(ev){
+ if(ev.repeat)return;
+ if(ev.target&&ev.target.classList&&ev.target.classList.contains("key"))return;
+ var k=KEYMAP[ev.key]||KEYMAP[ev.key.toLowerCase()];
+ if(!k)return;
+ var btn=document.querySelector('.key[data-k="'+k+'"]');
+ if(btn){btn.classList.add("pressed");setTimeout(function(){btn.classList.remove("pressed");},110);}
+ press(k);
+});
+
+/* boot */
+setDisplay("UrAnAI");
+(function loop(){ tick(); requestAnimationFrame(loop); })();
+setInterval(tick,120);
+})();
+</script>
