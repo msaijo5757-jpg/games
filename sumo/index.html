@@ -1,0 +1,657 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SM-80 相撲電卓</title>
+<style>
+  :root{
+    --pg-bg:#ece4d9;
+    --pg-ink:#453231;
+    --pg-sub:#8b7671;
+    /* device (fixed, single visual world) — enji crimson & indigo */
+    --body:#4e1f26; --body-hi:#642a33; --body-lo:#31131a;
+    --plate:#d5c9b2; --plate-ink:#33251f;
+    --bezel:#170a0d;
+    --lcd:#a9b79b; --lcd-deep:#9aa88c;
+    --seg:#1d2b21;
+    --ghost:rgba(29,43,33,.075);
+    --ghost-fig:rgba(29,43,33,.045);
+    --print:rgba(29,43,33,.38);
+    --key:#4a3138; --key-hi:#5c404a; --key-ink:#f6ece6;
+    --key-acc:#2e4a72; --key-acc-hi:#3a5b87;
+    --legend:#e8b96e;
+    --brand-rope:#ead9bd;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --pg-bg:#17110f; --pg-ink:#cbbeb6; --pg-sub:#7d6c67; }
+  }
+  :root[data-theme="dark"]{ --pg-bg:#17110f; --pg-ink:#cbbeb6; --pg-sub:#7d6c67; }
+  :root[data-theme="light"]{ --pg-bg:#ece4d9; --pg-ink:#453231; --pg-sub:#8b7671; }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0; min-height:100vh;
+    background:var(--pg-bg);
+    background-image:radial-gradient(ellipse 120% 80% at 50% 0%, rgba(255,255,255,.06), transparent 60%);
+    display:flex; flex-direction:column; align-items:center;
+    font-family:"Helvetica Neue",Helvetica,Arial,"Hiragino Kaku Gothic ProN",Meiryo,sans-serif;
+    color:var(--pg-ink);
+    padding:28px 12px 48px;
+  }
+  .strap{
+    font-size:11px; letter-spacing:.28em; text-transform:uppercase;
+    color:var(--pg-sub); margin:0 0 16px; text-align:center;
+  }
+
+  /* ============ DEVICE ============ */
+  .device{
+    width:min(400px,96vw);
+    background:linear-gradient(160deg,var(--body-hi) 0%,var(--body) 30%,var(--body) 70%,var(--body-lo) 100%);
+    border-radius:18px;
+    padding:14px 16px 20px;
+    box-shadow:
+      0 2px 0 rgba(255,255,255,.09) inset,
+      0 -3px 8px rgba(0,0,0,.5) inset,
+      0 18px 40px rgba(0,0,0,.35),
+      0 4px 10px rgba(0,0,0,.25);
+    user-select:none; -webkit-user-select:none;
+    touch-action:manipulation;
+  }
+
+  .topbar{display:flex; align-items:flex-end; justify-content:space-between; margin:2px 2px 10px;}
+  .brand{line-height:1}
+  .brand .logo{
+    font-style:italic; font-weight:800; font-size:22px; letter-spacing:.02em;
+    color:#f7efe6; text-shadow:0 1px 0 rgba(0,0,0,.6);
+  }
+  .brand .logo em{font-style:italic; color:var(--brand-rope)}
+  .brand .model{
+    font-size:9px; letter-spacing:.3em; color:#b3968f; margin-top:4px; text-transform:uppercase;
+  }
+  .speaker{display:flex; gap:10px; align-items:center;}
+  .grille{display:grid; grid-template-columns:repeat(6,4px); gap:3px;}
+  .grille i{width:4px;height:4px;border-radius:50%;background:#1c0a0e;box-shadow:0 1px 0 rgba(255,255,255,.08)}
+  .mute{
+    appearance:none; border:0; cursor:pointer;
+    font-size:8px; letter-spacing:.12em; color:#e0cfc6;
+    background:linear-gradient(#5c404a,#402b32);
+    border-radius:4px; padding:4px 7px;
+    box-shadow:0 1px 0 rgba(255,255,255,.15) inset,0 2px 3px rgba(0,0,0,.5);
+  }
+  .mute[aria-pressed="true"]{color:#836c68; box-shadow:0 1px 3px rgba(0,0,0,.6) inset}
+  .mute:focus-visible{outline:2px solid var(--legend); outline-offset:2px}
+
+  /* metal plate around screen */
+  .plate{
+    background:linear-gradient(175deg,#e5dbc6,var(--plate) 40%,#bcb09a);
+    border-radius:10px; padding:10px 12px 12px;
+    box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 -1px 0 rgba(0,0,0,.25) inset,0 2px 4px rgba(0,0,0,.45);
+  }
+  .plate-row{display:flex; justify-content:space-between; align-items:baseline; margin:0 2px 8px;}
+  .plate-row .t1{font-size:10px; font-weight:700; letter-spacing:.3em; color:var(--plate-ink); text-transform:uppercase;}
+  .plate-row .t2{font-size:8px; letter-spacing:.2em; color:#665546; text-transform:uppercase;}
+
+  .screen{
+    background:
+      linear-gradient(178deg, rgba(255,255,255,.25), rgba(255,255,255,0) 12%),
+      linear-gradient(160deg, var(--lcd), var(--lcd-deep));
+    border:3px solid var(--bezel);
+    border-radius:6px;
+    box-shadow:0 3px 8px rgba(0,0,0,.35) inset, 0 1px 0 rgba(255,255,255,.4);
+    padding:8px 10px 4px;
+  }
+  .sevenseg{display:block; width:100%; height:auto;}
+  .arena{display:block; width:100%; height:auto; margin-top:2px;}
+
+  .lcdtxt{
+    font-family:"Courier New",ui-monospace,monospace;
+    font-weight:700;
+    fill:var(--seg);
+  }
+
+  /* ============ KEYPAD ============ */
+  .keypad{
+    margin-top:14px;
+    display:grid; grid-template-columns:repeat(4,1fr); gap:9px;
+  }
+  .key{
+    appearance:none; border:0; cursor:pointer;
+    position:relative;
+    height:44px; border-radius:7px;
+    background:linear-gradient(178deg,var(--key-hi),var(--key) 45%,#3d272d);
+    color:var(--key-ink);
+    font-family:inherit; font-size:16px; font-weight:700;
+    box-shadow:
+      0 1px 0 rgba(255,255,255,.18) inset,
+      0 -2px 0 rgba(0,0,0,.35) inset,
+      0 3px 0 #200f14,
+      0 5px 6px rgba(0,0,0,.4);
+    transition:transform .04s ease, box-shadow .04s ease;
+  }
+  .key:active,.key.pressed{
+    transform:translateY(2px);
+    box-shadow:0 1px 0 rgba(255,255,255,.12) inset,0 -1px 0 rgba(0,0,0,.35) inset,0 1px 0 #200f14,0 2px 3px rgba(0,0,0,.4);
+  }
+  .key:focus-visible{outline:2px solid var(--legend); outline-offset:2px}
+  .key.red{background:linear-gradient(178deg,var(--key-acc-hi),var(--key-acc) 45%,#1f3455); color:#eef3fb; box-shadow:0 1px 0 rgba(255,255,255,.25) inset,0 -2px 0 rgba(0,0,0,.3) inset,0 3px 0 #17273f,0 5px 6px rgba(0,0,0,.4);}
+  .key.red:active,.key.red.pressed{box-shadow:0 1px 0 rgba(255,255,255,.15) inset,0 -1px 0 rgba(0,0,0,.3) inset,0 1px 0 #17273f,0 2px 3px rgba(0,0,0,.4)}
+  .key .legend{
+    position:absolute; top:3px; left:0; right:0;
+    font-size:7.5px; font-weight:700; letter-spacing:.08em;
+    color:var(--legend); text-transform:uppercase;
+  }
+  .key.red .legend{color:#9fc0e6}
+  .key .cap{display:block; margin-top:6px;}
+  .key.op .cap{font-size:18px}
+  .footprint{
+    margin-top:12px; text-align:center;
+    font-size:8px; letter-spacing:.22em; color:#9c8079; text-transform:uppercase;
+  }
+
+  /* ============ PAGE CAPTION ============ */
+  .caption{
+    width:min(400px,96vw); margin-top:22px;
+    font-size:12.5px; line-height:1.9; color:var(--pg-ink);
+  }
+  .caption h2{font-size:12px; letter-spacing:.2em; text-transform:uppercase; color:var(--pg-sub); margin:0 0 6px; font-weight:700;}
+  .caption table{border-collapse:collapse; width:100%; font-variant-numeric:tabular-nums;}
+  .caption td{padding:3px 8px 3px 0; vertical-align:top;}
+  .caption td.k{white-space:nowrap; font-family:ui-monospace,"Courier New",monospace; font-weight:700;}
+  .caption p{margin:10px 0 0;}
+</style>
+
+<p class="strap">Handheld LCD Game &middot; circa 1980</p>
+
+<div class="device" id="device">
+  <div class="topbar">
+    <div class="brand">
+      <div class="logo">SM-80<em>&#9678;</em></div>
+      <div class="model">Sumo Game &amp; Calculator</div>
+    </div>
+    <div class="speaker">
+      <button class="mute" id="muteBtn" aria-pressed="false" title="サウンド切替">SOUND</button>
+      <div class="grille" aria-hidden="true">
+        <i></i><i></i><i></i><i></i><i></i><i></i>
+        <i></i><i></i><i></i><i></i><i></i><i></i>
+        <i></i><i></i><i></i><i></i><i></i><i></i>
+      </div>
+    </div>
+  </div>
+
+  <div class="plate">
+    <div class="plate-row">
+      <span class="t1">Sumo</span>
+      <span class="t2" id="modeLabel">Game Mode</span>
+    </div>
+    <div class="screen">
+      <svg class="sevenseg" id="segsvg" viewBox="0 0 236 46" aria-hidden="true"></svg>
+      <svg class="arena" id="arena" viewBox="0 0 400 168" aria-hidden="true"></svg>
+    </div>
+  </div>
+
+  <div class="keypad" id="keypad">
+    <button class="key red" data-k="MODE"><span class="cap" style="font-size:11px">MODE</span></button>
+    <button class="key red" data-k="AC"><span class="legend">Start</span><span class="cap">AC</span></button>
+    <button class="key op" data-k="%"><span class="cap">%</span></button>
+    <button class="key op" data-k="/"><span class="cap">&divide;</span></button>
+
+    <button class="key" data-k="7"><span class="legend">Oshi</span><span class="cap">7</span></button>
+    <button class="key" data-k="8"><span class="legend">Hiki</span><span class="cap">8</span></button>
+    <button class="key" data-k="9"><span class="legend">Nage</span><span class="cap">9</span></button>
+    <button class="key op" data-k="*"><span class="cap">&times;</span></button>
+
+    <button class="key" data-k="4"><span class="cap">4</span></button>
+    <button class="key" data-k="5"><span class="cap">5</span></button>
+    <button class="key" data-k="6"><span class="cap">6</span></button>
+    <button class="key op" data-k="-"><span class="cap">&minus;</span></button>
+
+    <button class="key" data-k="1"><span class="cap">1</span></button>
+    <button class="key" data-k="2"><span class="cap">2</span></button>
+    <button class="key" data-k="3"><span class="cap">3</span></button>
+    <button class="key op" data-k="+"><span class="cap">+</span></button>
+
+    <button class="key" data-k="0"><span class="cap">0</span></button>
+    <button class="key" data-k="."><span class="cap">&middot;</span></button>
+    <button class="key op" data-k="=" style="grid-column:span 2"><span class="cap">=</span></button>
+  </div>
+
+  <div class="footprint">Electronic Calculator &middot; Made for Nostalgia</div>
+</div>
+
+<div class="caption">
+  <h2>あそびかた</h2>
+  <table>
+    <tr><td class="k">AC</td><td>取組スタート（MODEで電卓⇄ゲーム切替）</td></tr>
+    <tr><td class="k">7 / O</td><td>押し（相手の投げをつぶす）</td></tr>
+    <tr><td class="k">8 / H</td><td>引き（前に出てくる相手を叩く）</td></tr>
+    <tr><td class="k">9 / N</td><td>投げ（下がった相手を捕まえて投げる）</td></tr>
+  </table>
+  <p>まず「ハッケヨイ」の点滅で<strong>立合い</strong>——合図が出た瞬間にどれかのキーを押すと有利な当たりで始まります。早すぎると待ったです。取組が始まったら、相手の技が<strong>点滅で予告</strong>されるので、その技に勝つ技を返してください。<strong>押しには引き、引きには投げ、投げには押し</strong>——相撲そのままの三すくみです。読み勝つと相手を土俵際へ押し込み、3回押し込めば勝ち。負けると黒星がひとつ増え、3つで打ち止めです。勝つたびに番付が上がり（序ノ口→…→横綱）、そのぶん予告が短くなります。MODEを押せばふつうの8桁電卓としても使えます。</p>
+</div>
+
+<script>
+(function(){
+"use strict";
+var $=function(s){return document.querySelector(s)};
+
+/* ================= 7-SEGMENT DISPLAY ================= */
+var SEGMAP={
+ "0":"abcdef","1":"bc","2":"abdeg","3":"abcdg","4":"bcfg","5":"acdfg","6":"acdefg",
+ "7":"abc","8":"abcdefg","9":"abcdfg","-":"g"," ":"","E":"adefg","o":"cdeg","H":"bcefg",
+ "L":"def","P":"abefg","A":"abcefg","C":"adef","U":"bcdef","r":"eg","n":"ceg","d":"bcdeg","F":"aefg","I":"ef"
+};
+var SEGRECT={
+ a:[3,0,16,5], b:[17,3,5,16], c:[17,21,5,16], d:[3,35,16,5],
+ e:[0,21,5,16], f:[0,3,5,16], g:[3,18,16,4]
+};
+var NDIG=8, segEls=[];
+(function buildDisplay(){
+ var svg=$("#segsvg"), ns="http://www.w3.org/2000/svg";
+ for(var i=0;i<NDIG;i++){
+   var g=document.createElementNS(ns,"g");
+   g.setAttribute("transform","translate("+(4+i*29)+",3) skewX(-6)");
+   var digit={};
+   for(var s in SEGRECT){
+     var r=SEGRECT[s], el=document.createElementNS(ns,"rect");
+     el.setAttribute("x",r[0]); el.setAttribute("y",r[1]);
+     el.setAttribute("width",r[2]); el.setAttribute("height",r[3]);
+     el.setAttribute("rx",1.5); el.setAttribute("fill","var(--ghost)");
+     g.appendChild(el); digit[s]=el;
+   }
+   var dp=document.createElementNS(ns,"circle");
+   dp.setAttribute("cx",25.5); dp.setAttribute("cy",38); dp.setAttribute("r",2.4);
+   dp.setAttribute("fill","var(--ghost)");
+   g.appendChild(dp); digit.dp=dp;
+   svg.appendChild(g); segEls.push(digit);
+ }
+})();
+function setDisplay(str){
+ str=String(str);
+ var cells=[],i;
+ for(i=0;i<str.length;i++){
+   var ch=str[i];
+   if(ch==="."&&cells.length){cells[cells.length-1].dp=true;}
+   else cells.push({ch:ch,dp:false});
+ }
+ while(cells.length<NDIG)cells.unshift({ch:" ",dp:false});
+ if(cells.length>NDIG)cells=cells.slice(cells.length-NDIG);
+ for(i=0;i<NDIG;i++){
+   var on=SEGMAP[cells[i].ch]||"";
+   for(var s in SEGRECT)
+     segEls[i][s].setAttribute("fill",on.indexOf(s)>=0?"var(--seg)":"var(--ghost)");
+   segEls[i].dp.setAttribute("fill",cells[i].dp?"var(--seg)":"var(--ghost)");
+ }
+}
+
+/* ================= ARENA (LCD sprites) ================= */
+/* rikishi facing +x, origin at feet. heavy, low, with a topknot. */
+var POSES={
+ shikiri:
+   '<polygon points="-20,0 -9,0 -7,-18 -18,-20"/><polygon points="7,0 18,0 17,-20 6,-18"/>'+
+   '<path d="M-17,-16 Q-20,-40 0,-42 Q19,-40 16,-16 Z"/>'+
+   '<circle cx="6" cy="-49" r="8"/><path d="M-2,-56 L10,-58 L10,-53 L-2,-51 Z"/>'+
+   '<polygon points="-12,-28 -18,-6 -12,-3 -6,-26"/><polygon points="10,-28 15,-6 21,-8 16,-30"/>',
+ oshi:
+   '<polygon points="-22,0 -11,0 -8,-18 -19,-20"/><polygon points="8,0 19,0 18,-20 7,-18"/>'+
+   '<path d="M-18,-16 Q-21,-42 2,-44 Q20,-42 17,-16 Z"/>'+
+   '<circle cx="8" cy="-51" r="8"/><path d="M0,-58 L12,-60 L12,-55 L0,-53 Z"/>'+
+   '<polygon points="12,-40 33,-36 33,-28 12,-32"/><polygon points="12,-30 31,-24 31,-17 12,-23"/>',
+ hiki:
+   '<polygon points="-21,0 -10,0 -11,-18 -22,-20"/><polygon points="5,0 16,0 13,-20 2,-18"/>'+
+   '<path d="M-21,-16 Q-25,-42 -3,-45 Q15,-42 12,-16 Z"/>'+
+   '<circle cx="-5" cy="-52" r="8"/><path d="M-13,-59 L-1,-61 L-1,-56 L-13,-54 Z"/>'+
+   '<polygon points="9,-38 29,-30 26,-22 7,-31"/><polygon points="7,-28 23,-16 19,-9 5,-21"/>',
+ nage:
+   '<polygon points="-20,0 -9,0 -8,-18 -19,-20"/><polygon points="9,0 20,0 17,-20 6,-18"/>'+
+   '<path d="M-16,-16 Q-20,-42 2,-44 Q19,-40 15,-16 Z"/>'+
+   '<circle cx="7" cy="-51" r="8"/><path d="M-1,-58 L11,-60 L11,-55 L-1,-53 Z"/>'+
+   '<polygon points="8,-44 21,-58 29,-52 16,-38"/><circle cx="31" cy="-54" r="5"/>'+
+   '<polygon points="10,-30 25,-26 25,-19 10,-23"/>',
+ down:
+   '<ellipse cx="4" cy="-8" rx="22" ry="8"/><circle cx="28" cy="-9" r="7.5"/>'+
+   '<path d="M32,-15 L42,-17 L42,-12 L32,-10 Z"/>'+
+   '<polygon points="-16,-6 -27,-2 -25,3 -14,-1"/>'+
+   '<circle cx="-4" cy="-24" r="2.4"/><circle cx="6" cy="-28" r="2.4"/><circle cx="14" cy="-23" r="2.4"/>'
+};
+var POSE_NAMES=Object.keys(POSES);
+var NPOS=5;                       /* pushing positions: -2 .. +2 */
+/* a pose only exists where it can actually occur, so the panel print stays legible */
+var POSE_POS={shikiri:[2], oshi:[0,1,2,3,4], hiki:[0,1,2,3,4], nage:[0,1,2,3,4], down:[0,4]};
+function centerX(i){return 200+(i-2)*52;}
+function resolvePose(i,pose){
+ var at=POSE_POS[pose];
+ return (at&&at.indexOf(i)>=0)?pose:"oshi";
+}
+(function buildArena(){
+ var h='',i;
+ /* printed dohyo art (always visible, like the panel print on real LCD games) */
+ h+='<g fill="none" stroke="var(--print)" stroke-width="2">';
+ h+='<line x1="30" y1="150" x2="370" y2="150"/>';
+ h+='<path d="M50,150 Q64,139 78,150"/><path d="M322,150 Q336,139 350,150"/>';
+ h+='<line x1="186" y1="150" x2="186" y2="142"/><line x1="214" y1="150" x2="214" y2="142"/>';
+ h+='</g>';
+ /* shiroboshi (wins in hand) left, rank right */
+ h+='<g id="php">';
+ for(i=0;i<3;i++)h+='<circle cx="'+(30+i*17)+'" cy="30" r="6.5"/>';
+ h+='</g>';
+ h+='<text id="rnk" x="376" y="35" text-anchor="end" class="lcdtxt" font-size="12" letter-spacing="1"></text>';
+ /* message texts */
+ h+='<text id="msg" x="200" y="50" text-anchor="middle" class="lcdtxt" font-size="24" letter-spacing="3"></text>';
+ h+='<text id="msg2" x="200" y="68" text-anchor="middle" class="lcdtxt" font-size="11" letter-spacing="2"></text>';
+ /* rikishi: every pose at every position always in the DOM -> LCD ghosting */
+ for(i=0;i<NPOS;i++){
+   for(var j=0;j<POSE_NAMES.length;j++){
+     var p=POSE_NAMES[j];
+     if(POSE_POS[p].indexOf(i)<0)continue;
+     h+='<g id="P'+i+p+'" transform="translate('+(centerX(i)-26)+',150)" fill="var(--ghost-fig)">'+POSES[p]+'</g>';
+     h+='<g id="E'+i+p+'" transform="translate('+(centerX(i)+26)+',150) scale(-1,1)" fill="var(--ghost-fig)">'+POSES[p]+'</g>';
+   }
+ }
+ $("#arena").innerHTML=h;
+})();
+var litPose={P:null,E:null};
+function setPose(who,posIdx,pose,visible){
+ var id=(visible&&pose)?(who+posIdx+resolvePose(posIdx,pose)):null;
+ if(litPose[who]===id)return;
+ if(litPose[who])document.getElementById(litPose[who]).setAttribute("fill","var(--ghost-fig)");
+ if(id)document.getElementById(id).setAttribute("fill","var(--seg)");
+ litPose[who]=id;
+}
+function setHP(id,n){
+ var g=document.getElementById(id),i,kids=g.children;
+ for(i=0;i<kids.length;i++)kids[i].setAttribute("fill",i<n?"var(--seg)":"var(--ghost)");
+}
+function setMsg(t,t2){
+ var e=$("#msg");
+ e.textContent=t||"";
+ e.setAttribute("font-size",(t&&t.length>7)?16:24);
+ $("#msg2").textContent=t2||"";
+}
+
+/* ================= SOUND (piezo beeper) ================= */
+var actx=null, muted=false;
+function ac(){ if(!actx){ try{actx=new (window.AudioContext||window.webkitAudioContext)();}catch(e){} } if(actx&&actx.state==="suspended")actx.resume(); return actx; }
+function beep(freq,dur,delay,vol){
+ if(muted)return; var c=ac(); if(!c)return;
+ dur=dur||0.05; delay=delay||0; vol=vol||0.12;
+ var t=c.currentTime+delay, o=c.createOscillator(), g=c.createGain();
+ o.type="square"; o.frequency.value=freq;
+ g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+ o.connect(g); g.connect(c.destination); o.start(t); o.stop(t+dur+0.02);
+}
+var SND={
+ key:function(){beep(2200,0.02,0,0.06);},
+ call:function(){beep(659,0.09,0,0.14);beep(880,0.12,0.1,0.14);},
+ tachiai:function(){beep(147,0.11,0,0.22);beep(110,0.13,0.06,0.2);},
+ push:function(){beep(523,0.04,0,0.16);beep(784,0.05,0.04,0.16);},
+ pushed:function(){beep(233,0.07,0,0.16);beep(175,0.09,0.06,0.16);},
+ matta:function(){beep(330,0.06,0,0.12);beep(262,0.08,0.06,0.12);},
+ win:function(){[784,988,1319].forEach(function(f,i){beep(f,0.1,i*0.1,0.15);});},
+ lose:function(){[392,311,247].forEach(function(f,i){beep(f,0.14,i*0.13,0.15);});},
+ promo:function(){[523,659,784,1047,1319].forEach(function(f,i){beep(f,0.1,i*0.1,0.15);});},
+ over:function(){[392,330,262,196].forEach(function(f,i){beep(f,0.16,i*0.17,0.15);});}
+};
+$("#muteBtn").addEventListener("click",function(){
+ muted=!muted; this.setAttribute("aria-pressed",muted?"true":"false");
+ if(!muted)SND.key();
+});
+
+/* ================= CALCULATOR ================= */
+var calc={cur:"0",acc:null,op:null,fresh:true};
+function fmt(v){
+ if(!isFinite(v))return "E";
+ var neg=v<0, a=Math.abs(v), maxD=neg?7:8;
+ if(a>=Math.pow(10,maxD))return "E";
+ var intLen=Math.max(1,Math.floor(Math.log10(a||1))+1);
+ var s=a.toFixed(Math.max(0,maxD-intLen));
+ if(s.indexOf(".")>=0)s=s.replace(/0+$/,"").replace(/\.$/,"");
+ return (neg?"-":"")+s;
+}
+function calcCompute(){
+ if(calc.op===null||calc.acc===null)return;
+ var a=calc.acc,b=parseFloat(calc.cur),r;
+ switch(calc.op){case"+":r=a+b;break;case"-":r=a-b;break;case"*":r=a*b;break;case"/":r=b===0?Infinity:a/b;break;}
+ calc.cur=fmt(r); calc.acc=null; calc.op=null; calc.fresh=true;
+}
+function calcKey(k){
+ SND.key();
+ if(k==="AC"){calc={cur:"0",acc:null,op:null,fresh:true};}
+ else if(k>="0"&&k<="9"){
+   if(calc.fresh||calc.cur==="0"){calc.cur=k;calc.fresh=false;}
+   else if(calc.cur.replace(/[-.]/g,"").length<8)calc.cur+=k;
+ }
+ else if(k==="."){
+   if(calc.fresh){calc.cur="0.";calc.fresh=false;}
+   else if(calc.cur.indexOf(".")<0)calc.cur+=".";
+ }
+ else if(k==="%"){calc.cur=fmt(parseFloat(calc.cur)/100);calc.fresh=true;}
+ else if(k==="+"||k==="-"||k==="*"||k==="/"){
+   if(calc.op!==null&&!calc.fresh)calcCompute();
+   calc.acc=parseFloat(calc.cur); calc.op=k; calc.fresh=true;
+ }
+ else if(k==="="){calcCompute();}
+ setDisplay(calc.cur);
+}
+
+/* ================= GAME ================= */
+var HISCORE_KEY="sm80hi";
+var RANKS=["JONOKUCHI","JONIDAN","SANDANME","MAKUSHITA","JURYO","MAEGASHIRA","KOMUSUBI","SEKIWAKE","OZEKI","YOKOZUNA"];
+var KEY2TECH={"7":"oshi","8":"hiki","9":"nage"};
+var COUNTER={oshi:"hiki", hiki:"nage", nage:"oshi"};   /* what beats what */
+var KIMARITE={oshi:"OSHIDASHI", hiki:"HATAKIKOMI", nage:"UWATENAGE"};
+var G={
+ mode:"game", state:"title",
+ score:0, hi:parseInt(localStorage.getItem(HISCORE_KEY)||"0",10)||0,
+ rank:0, stars:3, wins:0, pos:0, kimarite:"", win:false,
+ p:{pose:"shikiri",poseT:0}, e:{pose:"shikiri",phase:"wait",phaseT:0,move:"oshi"},
+ phaseT:0, lockT:0
+};
+function teleWin(){return Math.max(360,950-G.rank*62);}   /* telegraph window shrinks with rank */
+function posIdx(){return Math.max(0,Math.min(4,G.pos+2));}
+function now(){return performance.now();}
+
+function startGame(){
+ G.score=0; G.rank=0; G.stars=3; G.wins=0;
+ startBout();
+}
+function startBout(){
+ G.pos=0; G.kimarite="";
+ G.p={pose:"shikiri",poseT:0};
+ G.e={pose:"shikiri",phase:"wait",phaseT:0,move:"oshi"};
+ G.state="shikiri"; G.phaseT=now()+1200;
+}
+function gameOver(){
+ G.state="over"; SND.over();
+ if(G.score>G.hi){G.hi=G.score; try{localStorage.setItem(HISCORE_KEY,String(G.hi));}catch(e){}}
+}
+function endBout(won,tech){
+ G.win=won; G.kimarite=KIMARITE[tech]||"YORIKIRI";
+ G.state="end"; G.phaseT=now()+2200;
+ if(won){
+   G.wins++; G.score+=300*(G.rank+1);
+   G.p.pose="oshi"; G.e.pose="down";
+   if(G.rank<RANKS.length-1){G.rank++; SND.promo();}
+   else SND.win();
+ }else{
+   G.stars--;
+   G.p.pose="down"; G.e.pose="oshi";
+   SND.lose();
+ }
+}
+function exchange(won,tech){
+ var t=now();
+ G.pos+=won?1:-1;
+ G.p.pose=tech; G.p.poseT=t+520;
+ G.e.pose=G.e.move;
+ G.e.phase="show"; G.e.phaseT=t+520;
+ if(won){G.score+=50; SND.push();}else SND.pushed();
+ if(G.pos>=3)endBout(true,tech);
+ else if(G.pos<=-3)endBout(false,G.e.move);
+}
+function playerTech(k){
+ var tech=KEY2TECH[k]; if(!tech)return;
+ var t=now();
+ if(G.state==="shikiri"){
+   /* jumped the gun */
+   SND.matta(); G.state="matta"; G.phaseT=t+1100;
+   return;
+ }
+ if(G.state==="tachiai"){
+   G.pos=1; G.p.pose=tech; G.p.poseT=t+520;
+   G.e.pose="oshi";
+   SND.tachiai();
+   G.state="bout"; G.e.phase="wait"; G.e.phaseT=t+700;
+   return;
+ }
+ if(G.state!=="bout")return;
+ if(G.e.phase==="tele"){
+   exchange(COUNTER[G.e.move]===tech,tech);
+ }else if(G.e.phase==="wait"){
+   if(G.lockT>t)return;
+   /* swung at nothing — brief opening */
+   G.p.pose=tech; G.p.poseT=t+240; G.lockT=t+320;
+   SND.key();
+ }
+}
+
+function tick(){
+ var t=now();
+ if(G.mode==="game"){
+  if(G.state==="shikiri"&&t>=G.phaseT){
+    G.state="tachiai"; G.phaseT=t+760; SND.call();
+  }
+  else if(G.state==="matta"&&t>=G.phaseT){
+    G.state="shikiri"; G.phaseT=t+1000;
+  }
+  else if(G.state==="tachiai"&&t>=G.phaseT){
+    /* slow off the mark */
+    G.pos=-1; G.p.pose="shikiri"; G.e.pose="oshi";
+    SND.pushed();
+    G.state="bout"; G.e.phase="wait"; G.e.phaseT=t+700;
+  }
+  else if(G.state==="bout"){
+    if(G.e.phase==="wait"&&t>=G.e.phaseT){
+      var keys=["oshi","hiki","nage"];
+      G.e.move=keys[Math.floor(Math.random()*3)];
+      G.e.phase="tele"; G.e.phaseT=t+teleWin();
+    }
+    else if(G.e.phase==="tele"&&t>=G.e.phaseT){
+      /* no counter offered */
+      G.p.pose="shikiri";
+      exchange(false,G.e.move);
+    }
+    else if(G.e.phase==="show"&&t>=G.e.phaseT&&G.state==="bout"){
+      G.e.phase="wait"; G.e.phaseT=t+(380+Math.random()*420);
+    }
+  }
+  else if(G.state==="end"&&t>=G.phaseT){
+    if(G.stars<=0)gameOver();
+    else startBout();
+  }
+ }
+ render(t);
+}
+
+/* ================= RENDER ================= */
+function render(t){
+ var slowBlink=Math.floor(t/500)%2===0;
+ var blink=Math.floor(t/130)%2===0;
+
+ if(G.mode==="calc"){
+   setPose("P",0,null,false); setPose("E",0,null,false);
+   setHP("php",0);
+   document.getElementById("rnk").textContent="";
+   setMsg("","");
+   return; /* display was set by calcKey */
+ }
+
+ /* --- display --- */
+ if(G.state==="title")setDisplay(String(G.hi));
+ else setDisplay(String(G.score));
+
+ /* --- stars & rank --- */
+ setHP("php",G.state==="title"?0:G.stars);
+ document.getElementById("rnk").textContent=G.state==="title"?"":RANKS[G.rank];
+
+ /* --- messages --- */
+ if(G.state==="title")setMsg("SUMO",slowBlink?"PUSH AC KEY":"");
+ else if(G.state==="shikiri")setMsg("","MIATTE...");
+ else if(G.state==="matta")setMsg("MATTA","");
+ else if(G.state==="tachiai")setMsg(blink?"HAKKEYOI!":"","");
+ else if(G.state==="bout")setMsg("","NOKOTTA  NOKOTTA");
+ else if(G.state==="end")setMsg(G.win?"WIN!":"MAKE",G.kimarite);
+ else if(G.state==="over")setMsg("MAKEKOSHI",slowBlink?"PUSH AC KEY":("HI "+G.hi));
+
+ /* --- rikishi --- */
+ var vis=G.state!=="title", idx=posIdx();
+ var pPose=(G.p.poseT>t)?G.p.pose:(G.state==="shikiri"||G.state==="tachiai"||G.state==="matta"?"shikiri":"oshi");
+ if(G.state==="end")pPose=G.p.pose;
+ setPose("P",idx,pPose,vis);
+
+ var ePose="shikiri", eVis=vis;
+ if(G.state==="end")ePose=G.e.pose;
+ else if(G.state==="bout"){
+   if(G.e.phase==="tele"){ePose=G.e.move; if(!blink)eVis=false;}
+   else if(G.e.phase==="show")ePose=G.e.pose;
+   else ePose="oshi";
+ }
+ setPose("E",idx,ePose,eVis);
+}
+
+/* ================= INPUT ================= */
+function press(k){
+ ac(); /* unlock audio on first gesture */
+ if(k==="MODE"){
+   G.mode=G.mode==="game"?"calc":"game";
+   $("#modeLabel").textContent=G.mode==="game"?"Game Mode":"Calculator";
+   SND.key();
+   if(G.mode==="calc")setDisplay(calc.cur);
+   else{G.state="title";}
+   return;
+ }
+ if(G.mode==="calc"){calcKey(k);return;}
+ /* game mode */
+ if(k==="AC"){
+   SND.key();
+   if(G.state==="title"||G.state==="over")startGame();
+   else G.state="title"; /* AC mid-game = reset to title */
+   return;
+ }
+ if(KEY2TECH[k])playerTech(k);
+ else SND.key();
+}
+
+document.querySelectorAll(".key").forEach(function(btn){
+ btn.addEventListener("pointerdown",function(ev){
+   ev.preventDefault();
+   btn.classList.add("pressed");
+   press(btn.getAttribute("data-k"));
+ });
+ ["pointerup","pointerleave","pointercancel"].forEach(function(evn){
+   btn.addEventListener(evn,function(){btn.classList.remove("pressed");});
+ });
+ btn.addEventListener("keydown",function(ev){
+   if(ev.key==="Enter"||ev.key===" "){ev.preventDefault();press(btn.getAttribute("data-k"));}
+ });
+});
+
+var KEYMAP={
+ "o":"7","h":"8","n":"9",
+ "0":"0","1":"1","2":"2","3":"3","4":"4","5":"5","6":"6","7":"7","8":"8","9":"9",
+ ".":".","+":"+","-":"-","*":"*","/":"/","%":"%","=":"=","Enter":"=",
+ "a":"AC","Escape":"AC","m":"MODE"
+};
+document.addEventListener("keydown",function(ev){
+ if(ev.repeat)return;
+ if(ev.target&&ev.target.classList&&ev.target.classList.contains("key"))return;
+ var k=KEYMAP[ev.key]||KEYMAP[ev.key.toLowerCase()];
+ if(!k)return;
+ var btn=document.querySelector('.key[data-k="'+k+'"]');
+ if(btn){btn.classList.add("pressed");setTimeout(function(){btn.classList.remove("pressed");},110);}
+ press(k);
+});
+
+/* boot — rAF for smoothness, interval as fallback when rAF is throttled */
+setDisplay(String(G.hi));
+(function loop(){ tick(); requestAnimationFrame(loop); })();
+setInterval(tick,120);
+})();
+</script>
