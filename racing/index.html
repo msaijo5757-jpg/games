@@ -1,0 +1,672 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RC-80 レーシング電卓</title>
+<style>
+  :root{
+    --pg-bg:#e7e6e2;
+    --pg-ink:#3c4149;
+    --pg-sub:#7f858e;
+    /* device (fixed, single visual world) — gunmetal silver & racing red */
+    --body:#6f7883; --body-hi:#8d97a2; --body-lo:#454d56;
+    --plate:#cdd0d2; --plate-ink:#2b3138;
+    --bezel:#12161a;
+    --lcd:#a9b79b; --lcd-deep:#9aa88c;
+    --seg:#1d2b21;
+    --ghost:rgba(29,43,33,.075);
+    --ghost-fig:rgba(29,43,33,.045);
+    --print:rgba(29,43,33,.36);
+    --key:#3c444d; --key-hi:#4e5862; --key-ink:#f2f5f7;
+    --key-acc:#bb3a2c; --key-acc-hi:#d24a39;
+    --legend:#ff8f6b;
+    --brand-chrome:#eef2f5;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --pg-bg:#141719; --pg-ink:#c3c8cd; --pg-sub:#767d85; }
+  }
+  :root[data-theme="dark"]{ --pg-bg:#141719; --pg-ink:#c3c8cd; --pg-sub:#767d85; }
+  :root[data-theme="light"]{ --pg-bg:#e7e6e2; --pg-ink:#3c4149; --pg-sub:#7f858e; }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0; min-height:100vh;
+    background:var(--pg-bg);
+    background-image:radial-gradient(ellipse 120% 80% at 50% 0%, rgba(255,255,255,.06), transparent 60%);
+    display:flex; flex-direction:column; align-items:center;
+    font-family:"Helvetica Neue",Helvetica,Arial,"Hiragino Kaku Gothic ProN",Meiryo,sans-serif;
+    color:var(--pg-ink);
+    padding:28px 12px 48px;
+  }
+  .strap{
+    font-size:11px; letter-spacing:.28em; text-transform:uppercase;
+    color:var(--pg-sub); margin:0 0 16px; text-align:center;
+  }
+
+  /* ============ DEVICE ============ */
+  .device{
+    width:min(400px,96vw);
+    background:linear-gradient(160deg,var(--body-hi) 0%,var(--body) 30%,var(--body) 70%,var(--body-lo) 100%);
+    border-radius:18px;
+    padding:14px 16px 20px;
+    box-shadow:
+      0 2px 0 rgba(255,255,255,.16) inset,
+      0 -3px 8px rgba(0,0,0,.45) inset,
+      0 18px 40px rgba(0,0,0,.35),
+      0 4px 10px rgba(0,0,0,.25);
+    user-select:none; -webkit-user-select:none;
+    touch-action:manipulation;
+  }
+
+  .topbar{display:flex; align-items:flex-end; justify-content:space-between; margin:2px 2px 10px;}
+  .brand{line-height:1}
+  .brand .logo{
+    font-style:italic; font-weight:800; font-size:22px; letter-spacing:.02em;
+    color:#fbfdfe; text-shadow:0 1px 0 rgba(0,0,0,.45);
+  }
+  .brand .logo em{font-style:italic; color:var(--legend)}
+  .brand .model{
+    font-size:9px; letter-spacing:.3em; color:#d8dee4; margin-top:4px; text-transform:uppercase;
+  }
+  .speaker{display:flex; gap:10px; align-items:center;}
+  .grille{display:grid; grid-template-columns:repeat(6,4px); gap:3px;}
+  .grille i{width:4px;height:4px;border-radius:50%;background:#171c21;box-shadow:0 1px 0 rgba(255,255,255,.14)}
+  .mute{
+    appearance:none; border:0; cursor:pointer;
+    font-size:8px; letter-spacing:.12em; color:#eaf0f4;
+    background:linear-gradient(#535d67,#3a424b);
+    border-radius:4px; padding:4px 7px;
+    box-shadow:0 1px 0 rgba(255,255,255,.18) inset,0 2px 3px rgba(0,0,0,.45);
+  }
+  .mute[aria-pressed="true"]{color:#8c959d; box-shadow:0 1px 3px rgba(0,0,0,.55) inset}
+  .mute:focus-visible{outline:2px solid var(--legend); outline-offset:2px}
+
+  /* metal plate around screen */
+  .plate{
+    background:linear-gradient(175deg,#e3e6e8,var(--plate) 40%,#aeb4b8);
+    border-radius:10px; padding:10px 12px 12px;
+    box-shadow:0 1px 0 rgba(255,255,255,.6) inset,0 -1px 0 rgba(0,0,0,.22) inset,0 2px 4px rgba(0,0,0,.4);
+  }
+  .plate-row{display:flex; justify-content:space-between; align-items:baseline; margin:0 2px 8px;}
+  .plate-row .t1{font-size:10px; font-weight:700; letter-spacing:.3em; color:var(--plate-ink); text-transform:uppercase;}
+  .plate-row .t2{font-size:8px; letter-spacing:.2em; color:#5c646c; text-transform:uppercase;}
+
+  .screen{
+    background:
+      linear-gradient(178deg, rgba(255,255,255,.25), rgba(255,255,255,0) 12%),
+      linear-gradient(160deg, var(--lcd), var(--lcd-deep));
+    border:3px solid var(--bezel);
+    border-radius:6px;
+    box-shadow:0 3px 8px rgba(0,0,0,.35) inset, 0 1px 0 rgba(255,255,255,.4);
+    padding:8px 10px 4px;
+  }
+  .sevenseg{display:block; width:100%; height:auto;}
+  .arena{display:block; width:100%; height:auto; margin-top:2px;}
+
+  .lcdtxt{
+    font-family:"Courier New",ui-monospace,monospace;
+    font-weight:700;
+    fill:var(--seg);
+  }
+
+  /* ============ KEYPAD ============ */
+  .keypad{
+    margin-top:14px;
+    display:grid; grid-template-columns:repeat(4,1fr); gap:9px;
+  }
+  .key{
+    appearance:none; border:0; cursor:pointer;
+    position:relative;
+    height:44px; border-radius:7px;
+    background:linear-gradient(178deg,var(--key-hi),var(--key) 45%,#333a42);
+    color:var(--key-ink);
+    font-family:inherit; font-size:16px; font-weight:700;
+    box-shadow:
+      0 1px 0 rgba(255,255,255,.18) inset,
+      0 -2px 0 rgba(0,0,0,.35) inset,
+      0 3px 0 #1c2126,
+      0 5px 6px rgba(0,0,0,.4);
+    transition:transform .04s ease, box-shadow .04s ease;
+  }
+  .key:active,.key.pressed{
+    transform:translateY(2px);
+    box-shadow:0 1px 0 rgba(255,255,255,.12) inset,0 -1px 0 rgba(0,0,0,.35) inset,0 1px 0 #1c2126,0 2px 3px rgba(0,0,0,.4);
+  }
+  .key:focus-visible{outline:2px solid var(--legend); outline-offset:2px}
+  .key.red{background:linear-gradient(178deg,var(--key-acc-hi),var(--key-acc) 45%,#8f2a1f); color:#fdeeeb; box-shadow:0 1px 0 rgba(255,255,255,.25) inset,0 -2px 0 rgba(0,0,0,.3) inset,0 3px 0 #6f1f16,0 5px 6px rgba(0,0,0,.4);}
+  .key.red:active,.key.red.pressed{box-shadow:0 1px 0 rgba(255,255,255,.15) inset,0 -1px 0 rgba(0,0,0,.3) inset,0 1px 0 #6f1f16,0 2px 3px rgba(0,0,0,.4)}
+  .key .legend{
+    position:absolute; top:3px; left:0; right:0;
+    font-size:7.5px; font-weight:700; letter-spacing:.08em;
+    color:var(--legend); text-transform:uppercase;
+  }
+  .key.red .legend{color:#ffd9cf}
+  .key .cap{display:block; margin-top:6px;}
+  .key.op .cap{font-size:18px}
+  .footprint{
+    margin-top:12px; text-align:center;
+    font-size:8px; letter-spacing:.22em; color:#dfe5ea; text-transform:uppercase;
+  }
+
+  /* ============ PAGE CAPTION ============ */
+  .caption{
+    width:min(400px,96vw); margin-top:22px;
+    font-size:12.5px; line-height:1.9; color:var(--pg-ink);
+  }
+  .caption h2{font-size:12px; letter-spacing:.2em; text-transform:uppercase; color:var(--pg-sub); margin:0 0 6px; font-weight:700;}
+  .caption table{border-collapse:collapse; width:100%; font-variant-numeric:tabular-nums;}
+  .caption td{padding:3px 8px 3px 0; vertical-align:top;}
+  .caption td.k{white-space:nowrap; font-family:ui-monospace,"Courier New",monospace; font-weight:700;}
+  .caption p{margin:10px 0 0;}
+</style>
+
+<p class="strap">Handheld LCD Game &middot; circa 1980</p>
+
+<div class="device" id="device">
+  <div class="topbar">
+    <div class="brand">
+      <div class="logo">RC-80<em>&#9654;</em></div>
+      <div class="model">Racing Game &amp; Calculator</div>
+    </div>
+    <div class="speaker">
+      <button class="mute" id="muteBtn" aria-pressed="false" title="サウンド切替">SOUND</button>
+      <div class="grille" aria-hidden="true">
+        <i></i><i></i><i></i><i></i><i></i><i></i>
+        <i></i><i></i><i></i><i></i><i></i><i></i>
+        <i></i><i></i><i></i><i></i><i></i><i></i>
+      </div>
+    </div>
+  </div>
+
+  <div class="plate">
+    <div class="plate-row">
+      <span class="t1">Racing</span>
+      <span class="t2" id="modeLabel">Game Mode</span>
+    </div>
+    <div class="screen">
+      <svg class="sevenseg" id="segsvg" viewBox="0 0 236 46" aria-hidden="true"></svg>
+      <svg class="arena" id="arena" viewBox="0 0 400 172" aria-hidden="true"></svg>
+    </div>
+  </div>
+
+  <div class="keypad" id="keypad">
+    <button class="key red" data-k="MODE"><span class="cap" style="font-size:11px">MODE</span></button>
+    <button class="key red" data-k="AC"><span class="legend">Start</span><span class="cap">AC</span></button>
+    <button class="key op" data-k="%"><span class="cap">%</span></button>
+    <button class="key op" data-k="/"><span class="cap">&divide;</span></button>
+
+    <button class="key" data-k="7"><span class="cap">7</span></button>
+    <button class="key" data-k="8"><span class="cap">8</span></button>
+    <button class="key" data-k="9"><span class="cap">9</span></button>
+    <button class="key op" data-k="*"><span class="cap">&times;</span></button>
+
+    <button class="key" data-k="4"><span class="cap">4</span></button>
+    <button class="key" data-k="5"><span class="cap">5</span></button>
+    <button class="key" data-k="6"><span class="cap">6</span></button>
+    <button class="key op" data-k="-"><span class="cap">&minus;</span></button>
+
+    <button class="key" data-k="1"><span class="legend">Left</span><span class="cap">1</span></button>
+    <button class="key" data-k="2"><span class="legend">Center</span><span class="cap">2</span></button>
+    <button class="key" data-k="3"><span class="legend">Right</span><span class="cap">3</span></button>
+    <button class="key op" data-k="+"><span class="cap">+</span></button>
+
+    <button class="key" data-k="0"><span class="cap">0</span></button>
+    <button class="key" data-k="."><span class="cap">&middot;</span></button>
+    <button class="key op" data-k="=" style="grid-column:span 2"><span class="cap">=</span></button>
+  </div>
+
+  <div class="footprint">Electronic Calculator &middot; Made for Nostalgia</div>
+</div>
+
+<div class="caption">
+  <h2>あそびかた</h2>
+  <table>
+    <tr><td class="k">AC</td><td>スタート（MODEで電卓⇄ゲーム切替）</td></tr>
+    <tr><td class="k">1 / ←</td><td>左車線へ</td></tr>
+    <tr><td class="k">2</td><td>中央車線へ</td></tr>
+    <tr><td class="k">3 / →</td><td>右車線へ</td></tr>
+  </table>
+  <p>3車線のハイウェイを、1・2・3キーで車線変更しながら前の車をかわしていきます。1台かわすごとに得点。<strong>となりの車線をすれすれで抜くと「NEAR」で得点2倍</strong>——安全運転よりギリギリのほうが稼げます。ガソリンは走るほど減っていくので、路上の<strong>燃料缶</strong>を拾って補給してください。ぶつかると車を1台失い、3台なくすとゲームオーバー。ガス欠でも終わりです。かわした台数がたまるとLAPが上がり、そのぶん速くなります。MODEを押せばふつうの8桁電卓としても使えます。</p>
+</div>
+
+<script>
+(function(){
+"use strict";
+var $=function(s){return document.querySelector(s)};
+
+/* ================= 7-SEGMENT DISPLAY ================= */
+var SEGMAP={
+ "0":"abcdef","1":"bc","2":"abdeg","3":"abcdg","4":"bcfg","5":"acdfg","6":"acdefg",
+ "7":"abc","8":"abcdefg","9":"abcdfg","-":"g"," ":"","E":"adefg","o":"cdeg","H":"bcefg",
+ "L":"def","P":"abefg","A":"abcefg","C":"adef","U":"bcdef","r":"eg","n":"ceg","d":"bcdeg","F":"aefg","I":"ef"
+};
+var SEGRECT={
+ a:[3,0,16,5], b:[17,3,5,16], c:[17,21,5,16], d:[3,35,16,5],
+ e:[0,21,5,16], f:[0,3,5,16], g:[3,18,16,4]
+};
+var NDIG=8, segEls=[];
+(function buildDisplay(){
+ var svg=$("#segsvg"), ns="http://www.w3.org/2000/svg";
+ for(var i=0;i<NDIG;i++){
+   var g=document.createElementNS(ns,"g");
+   g.setAttribute("transform","translate("+(4+i*29)+",3) skewX(-6)");
+   var digit={};
+   for(var s in SEGRECT){
+     var r=SEGRECT[s], el=document.createElementNS(ns,"rect");
+     el.setAttribute("x",r[0]); el.setAttribute("y",r[1]);
+     el.setAttribute("width",r[2]); el.setAttribute("height",r[3]);
+     el.setAttribute("rx",1.5); el.setAttribute("fill","var(--ghost)");
+     g.appendChild(el); digit[s]=el;
+   }
+   var dp=document.createElementNS(ns,"circle");
+   dp.setAttribute("cx",25.5); dp.setAttribute("cy",38); dp.setAttribute("r",2.4);
+   dp.setAttribute("fill","var(--ghost)");
+   g.appendChild(dp); digit.dp=dp;
+   svg.appendChild(g); segEls.push(digit);
+ }
+})();
+function setDisplay(str){
+ str=String(str);
+ var cells=[],i;
+ for(i=0;i<str.length;i++){
+   var ch=str[i];
+   if(ch==="."&&cells.length){cells[cells.length-1].dp=true;}
+   else cells.push({ch:ch,dp:false});
+ }
+ while(cells.length<NDIG)cells.unshift({ch:" ",dp:false});
+ if(cells.length>NDIG)cells=cells.slice(cells.length-NDIG);
+ for(i=0;i<NDIG;i++){
+   var on=SEGMAP[cells[i].ch]||"";
+   for(var s in SEGRECT)
+     segEls[i][s].setAttribute("fill",on.indexOf(s)>=0?"var(--seg)":"var(--ghost)");
+   segEls[i].dp.setAttribute("fill",cells[i].dp?"var(--seg)":"var(--ghost)");
+ }
+}
+
+/* ================= ROAD GEOMETRY ================= */
+var NROW=6, HZ=22, BOT=124, HW_HZ=26, HW_BOT=118;
+function rowY(r){ var t=(r+1)/NROW; return HZ+(BOT-HZ)*Math.pow(t,1.7); }
+function hwAt(y){ return HW_HZ+(HW_BOT-HW_HZ)*(y-HZ)/(BOT-HZ); }
+function rowScale(r){ var t=(r+1)/NROW; return 0.22+0.58*Math.pow(t,1.5); }
+function laneX(r,l){ var y=rowY(r); return 200+(l-1)*(2*hwAt(y)/3); }
+
+/* ================= SPRITES (top-down silhouettes) ================= */
+/* traffic car — coming at you */
+var SP_CAR=
+ '<path fill-rule="evenodd" d="M-15,-28 Q-18,-24 -18,-14 L-18,14 Q-18,24 -15,28 L15,28 Q18,24 18,14 L18,-14 Q18,-24 15,-28 Z'+
+ ' M-23,-21 h5 v14 h-5 z M18,-21 h5 v14 h-5 z M-23,7 h5 v14 h-5 z M18,7 h5 v14 h-5 z'+
+ ' M-10,-19 L10,-19 L12,-8 L-12,-8 Z M-12,6 L12,6 L10,16 L-10,16 Z"/>';
+/* player car — nose up, rear wing */
+var SP_PLR=
+ '<path fill-rule="evenodd" d="M-11,-30 L11,-30 L16,-16 L18,-4 L18,15 L15,25 L-15,25 L-18,15 L-18,-4 L-16,-16 Z'+
+ ' M-24,-17 h6 v14 h-6 z M18,-17 h6 v14 h-6 z M-25,5 h7 v17 h-7 z M18,5 h7 v17 h-7 z'+
+ ' M-24,24 L24,24 L24,30 L-24,30 Z'+
+ ' M-8,-13 L8,-13 L9,1 L-9,1 Z"/>';
+/* fuel can */
+var SP_FUEL=
+ '<path fill-rule="evenodd" d="M-13,-13 Q-13,-16 -10,-16 L10,-16 Q13,-16 13,-13 L13,16 L-13,16 Z'+
+ ' M-8,-22 L8,-22 L8,-16 L-8,-16 Z M13,-9 L21,-5 L21,-1 L13,-3 Z'+
+ ' M-7,-7 L7,-7 L7,-1 L-7,-1 Z"/>';
+/* crash burst */
+var SP_BOOM=
+ '<path d="M0,-36 L8,-13 L30,-22 L15,-2 L36,9 L12,9 L18,32 L0,15 L-18,32 L-12,9 L-36,9 L-15,-2 L-30,-22 L-8,-13 Z"/>';
+
+var cache={};
+function el(id){ return cache[id]||(cache[id]=document.getElementById(id)); }
+
+(function buildArena(){
+ var h='',r,l,x,y,s;
+ /* --- printed road art (always visible, like the panel print) --- */
+ h+='<g fill="none" stroke="var(--print)" stroke-width="2" stroke-linecap="round">';
+ var yLow=152, hwLow=hwAt(yLow);
+ h+='<line x1="'+(200-HW_HZ)+'" y1="'+HZ+'" x2="'+(200-hwLow)+'" y2="'+yLow+'"/>';
+ h+='<line x1="'+(200+HW_HZ)+'" y1="'+HZ+'" x2="'+(200+hwLow)+'" y2="'+yLow+'"/>';
+ h+='<line x1="'+(200-HW_HZ)+'" y1="'+HZ+'" x2="'+(200+HW_HZ)+'" y2="'+HZ+'"/>';
+ h+='</g>';
+ /* lane dividers: dashes at each row */
+ h+='<g fill="none" stroke="var(--print)" stroke-width="2">';
+ for(r=0;r<NROW;r++){
+   var yc=rowY(r), sp=Math.max(4,(rowY(Math.min(r+1,NROW-1))-yc)/2.6);
+   var y1=yc-sp, y2=yc+sp;
+   for(var b=-1;b<=1;b+=2){
+     var x1=200+b*hwAt(y1)/3, x2=200+b*hwAt(y2)/3;
+     h+='<line x1="'+x1.toFixed(1)+'" y1="'+y1.toFixed(1)+'" x2="'+x2.toFixed(1)+'" y2="'+y2.toFixed(1)+'"/>';
+   }
+ }
+ h+='</g>';
+ /* --- status row (sky) --- */
+ h+='<g id="spares">';
+ for(l=0;l<3;l++)h+='<g transform="translate('+(29+l*20)+',13) scale(0.36)">'+SP_CAR+'</g>';
+ h+='</g>';
+ h+='<text id="lap" x="376" y="17" text-anchor="end" class="lcdtxt" font-size="12" letter-spacing="1"></text>';
+ h+='<text id="flash" x="200" y="17" text-anchor="middle" class="lcdtxt" font-size="12" letter-spacing="2"></text>';
+ /* --- messages --- */
+ h+='<text id="msg" x="200" y="72" text-anchor="middle" class="lcdtxt" font-size="26" letter-spacing="3"></text>';
+ h+='<text id="msg2" x="200" y="92" text-anchor="middle" class="lcdtxt" font-size="11" letter-spacing="2"></text>';
+ /* --- every sprite at every cell, always in the DOM -> LCD ghosting --- */
+ for(r=0;r<NROW;r++){
+   s=rowScale(r); y=rowY(r);
+   for(l=0;l<3;l++){
+     x=laneX(r,l);
+     h+='<g id="C'+r+l+'" transform="translate('+x.toFixed(1)+','+y.toFixed(1)+') scale('+s.toFixed(3)+')" fill="var(--ghost-fig)">'+SP_CAR+'</g>';
+     h+='<g id="F'+r+l+'" transform="translate('+x.toFixed(1)+','+y.toFixed(1)+') scale('+s.toFixed(3)+')" fill="var(--ghost-fig)">'+SP_FUEL+'</g>';
+   }
+ }
+ s=rowScale(NROW-1); y=rowY(NROW-1);
+ for(l=0;l<3;l++){
+   x=laneX(NROW-1,l);
+   h+='<g id="P'+l+'" transform="translate('+x.toFixed(1)+','+y.toFixed(1)+') scale('+s.toFixed(3)+')" fill="var(--ghost-fig)">'+SP_PLR+'</g>';
+   h+='<g id="B'+l+'" transform="translate('+x.toFixed(1)+','+y.toFixed(1)+') scale('+s.toFixed(3)+')" fill="var(--ghost-fig)">'+SP_BOOM+'</g>';
+ }
+ /* --- fuel gauge --- */
+ h+='<text x="24" y="166" class="lcdtxt" font-size="9" letter-spacing="2">FUEL</text>';
+ for(var i=0;i<10;i++)
+   h+='<rect id="G'+i+'" x="'+(70+i*31)+'" y="156" width="27" height="10" rx="1.5" fill="var(--ghost)"/>';
+ $("#arena").innerHTML=h;
+})();
+
+var prevOn={};
+function applyOn(on){
+ var id;
+ for(id in prevOn) if(!on[id]) el(id).setAttribute("fill","var(--ghost-fig)");
+ for(id in on) if(!prevOn[id]) el(id).setAttribute("fill","var(--seg)");
+ prevOn=on;
+}
+function setSpares(n){
+ var kids=el("spares").children;
+ for(var i=0;i<kids.length;i++)kids[i].setAttribute("fill",i<n?"var(--seg)":"var(--ghost)");
+}
+function setGauge(n,blink){
+ for(var i=0;i<10;i++)
+   el("G"+i).setAttribute("fill",(i<n&&blink)?"var(--seg)":"var(--ghost)");
+}
+function setMsg(t,t2){
+ var e=$("#msg");
+ e.textContent=t||"";
+ e.setAttribute("font-size",(t&&t.length>7)?17:26);
+ $("#msg2").textContent=t2||"";
+}
+
+/* ================= SOUND (piezo beeper) ================= */
+var actx=null, muted=false;
+function ac(){ if(!actx){ try{actx=new (window.AudioContext||window.webkitAudioContext)();}catch(e){} } if(actx&&actx.state==="suspended")actx.resume(); return actx; }
+function beep(freq,dur,delay,vol,type){
+ if(muted)return; var c=ac(); if(!c)return;
+ dur=dur||0.05; delay=delay||0; vol=vol||0.12;
+ var t=c.currentTime+delay, o=c.createOscillator(), g=c.createGain();
+ o.type=type||"square"; o.frequency.value=freq;
+ g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+ o.connect(g); g.connect(c.destination); o.start(t); o.stop(t+dur+0.02);
+}
+var SND={
+ key:function(){beep(2200,0.02,0,0.06);},
+ swerve:function(){beep(880,0.03,0,0.10);beep(1245,0.03,0.03,0.09);},
+ pass:function(){beep(1319,0.03,0,0.09);},
+ near:function(){beep(1568,0.04,0,0.12);beep(2093,0.05,0.04,0.11);},
+ fuel:function(){[784,1047,1319].forEach(function(f,i){beep(f,0.06,i*0.05,0.13);});},
+ engine:function(){beep(88,0.05,0,0.05,"sawtooth");},
+ crash:function(){[330,262,196,147].forEach(function(f,i){beep(f,0.11,i*0.05,0.2,"sawtooth");});},
+ lap:function(){[523,659,784,1047].forEach(function(f,i){beep(f,0.08,i*0.08,0.14);});},
+ low:function(){beep(392,0.06,0,0.1);beep(294,0.08,0.07,0.1);},
+ over:function(){[392,330,262,196].forEach(function(f,i){beep(f,0.16,i*0.17,0.15);});}
+};
+$("#muteBtn").addEventListener("click",function(){
+ muted=!muted; this.setAttribute("aria-pressed",muted?"true":"false");
+ if(!muted)SND.key();
+});
+
+/* ================= CALCULATOR ================= */
+var calc={cur:"0",acc:null,op:null,fresh:true};
+function fmt(v){
+ if(!isFinite(v))return "E";
+ var neg=v<0, a=Math.abs(v), maxD=neg?7:8;
+ if(a>=Math.pow(10,maxD))return "E";
+ var intLen=Math.max(1,Math.floor(Math.log10(a||1))+1);
+ var s=a.toFixed(Math.max(0,maxD-intLen));
+ if(s.indexOf(".")>=0)s=s.replace(/0+$/,"").replace(/\.$/,"");
+ return (neg?"-":"")+s;
+}
+function calcCompute(){
+ if(calc.op===null||calc.acc===null)return;
+ var a=calc.acc,b=parseFloat(calc.cur),r;
+ switch(calc.op){case"+":r=a+b;break;case"-":r=a-b;break;case"*":r=a*b;break;case"/":r=b===0?Infinity:a/b;break;}
+ calc.cur=fmt(r); calc.acc=null; calc.op=null; calc.fresh=true;
+}
+function calcKey(k){
+ SND.key();
+ if(k==="AC"){calc={cur:"0",acc:null,op:null,fresh:true};}
+ else if(k>="0"&&k<="9"){
+   if(calc.fresh||calc.cur==="0"){calc.cur=k;calc.fresh=false;}
+   else if(calc.cur.replace(/[-.]/g,"").length<8)calc.cur+=k;
+ }
+ else if(k==="."){
+   if(calc.fresh){calc.cur="0.";calc.fresh=false;}
+   else if(calc.cur.indexOf(".")<0)calc.cur+=".";
+ }
+ else if(k==="%"){calc.cur=fmt(parseFloat(calc.cur)/100);calc.fresh=true;}
+ else if(k==="+"||k==="-"||k==="*"||k==="/"){
+   if(calc.op!==null&&!calc.fresh)calcCompute();
+   calc.acc=parseFloat(calc.cur); calc.op=k; calc.fresh=true;
+ }
+ else if(k==="="){calcCompute();}
+ setDisplay(calc.cur);
+}
+
+/* ================= GAME ================= */
+var HISCORE_KEY="rc80hi";
+var FUEL_MAX=1000, FUEL_DRAIN=12, FUEL_CAN=190, PASS_PER_LAP=15;
+var G={
+ mode:"game", state:"title",
+ score:0, hi:parseInt(localStorage.getItem(HISCORE_KEY)||"0",10)||0,
+ lane:1, lap:1, spares:3, fuel:FUEL_MAX, passed:0,
+ grid:[], lastFree:[0,1,2],
+ flash:"", flashT:0, stepT:0, phaseT:0, over:"", crashLane:1
+};
+function now(){return performance.now();}
+function stepMs(){return Math.max(155,430-(G.lap-1)*26);}
+function emptyGrid(){var g=[],r;for(r=0;r<NROW;r++)g.push([0,0,0]);return g;}
+function flash(t){G.flash=t;G.flashT=now()+900;}
+
+function startGame(){
+ G.score=0; G.lane=1; G.lap=1; G.spares=3; G.fuel=FUEL_MAX; G.passed=0;
+ G.grid=emptyGrid(); G.lastFree=[0,1,2]; G.flash=""; G.over="";
+ G.state="play"; G.stepT=now()+700;
+}
+function gameOver(why){
+ G.state="over"; G.over=why; SND.over();
+ if(G.score>G.hi){G.hi=G.score; try{localStorage.setItem(HISCORE_KEY,String(G.hi));}catch(e){}}
+}
+function crash(lane){
+ G.crashLane=lane; G.spares--;
+ SND.crash();
+ G.state="crash"; G.phaseT=now()+1300;
+}
+function spawnRow(){
+ var row=[0,0,0], l, j;
+ var p=Math.min(0.82,0.46+(G.lap-1)*0.03);
+ if(Math.random()>p){                       /* breathing space */
+   G.lastFree=[0,1,2];
+   if(Math.random()<0.08)row[Math.floor(Math.random()*3)]=2;
+   return row;
+ }
+ /* the free lane must be reachable from a free lane of the previous row */
+ var reach=[];
+ for(l=0;l<3;l++)
+   for(j=0;j<G.lastFree.length;j++)
+     if(Math.abs(l-G.lastFree[j])<=1){reach.push(l);break;}
+ var free=reach[Math.floor(Math.random()*reach.length)];
+ var others=[];
+ for(l=0;l<3;l++)if(l!==free)others.push(l);
+ if(Math.random()<Math.min(0.55,0.12+(G.lap-1)*0.05)){
+   row[others[0]]=1; row[others[1]]=1; G.lastFree=[free];
+ }else{
+   var pi=Math.floor(Math.random()*2);
+   row[others[pi]]=1; G.lastFree=[free,others[1-pi]];
+ }
+ if(Math.random()<0.10)row[free]=2;         /* fuel sits in the safe lane */
+ return row;
+}
+function step(t){
+ var r,l;
+ for(r=NROW-1;r>0;r--)G.grid[r]=G.grid[r-1];
+ G.grid[0]=spawnRow();
+
+ /* arrivals at the player row */
+ var row=G.grid[NROW-1], hit=false, near=false, got=0, cars=0;
+ for(l=0;l<3;l++)if(row[l]===1&&l===G.lane)hit=true;
+ if(hit){ crash(G.lane); return; }
+ for(l=0;l<3;l++){
+   if(row[l]===1){
+     var d=Math.abs(l-G.lane);
+     G.score+=(d===1?20:10)*G.lap; G.passed++; cars++;
+     if(d===1)near=true;
+   }else if(row[l]===2&&l===G.lane){
+     row[l]=0; got++;
+     G.fuel=Math.min(FUEL_MAX,G.fuel+FUEL_CAN);
+   }
+ }
+ if(got){SND.fuel(); flash("FUEL +");}
+ else if(near){SND.near(); flash("NEAR!");}
+ else if(cars)SND.pass();
+ else SND.engine();
+
+ /* fuel & lap */
+ G.fuel-=FUEL_DRAIN;
+ if(G.fuel<=0){G.fuel=0; gameOver("GAS"); return;}
+ if(G.fuel<200&&G.fuel+FUEL_DRAIN>=200)SND.low();
+ var wantLap=1+Math.floor(G.passed/PASS_PER_LAP);
+ if(wantLap>G.lap&&G.lap<20){G.lap=wantLap; SND.lap(); flash("LAP "+G.lap);}
+}
+function moveTo(l){
+ if(G.state!=="play")return;
+ if(l<0||l>2||l===G.lane)return;
+ G.lane=l; SND.swerve();
+}
+
+function tick(){
+ var t=now();
+ if(G.mode==="game"){
+   if(G.state==="play"){
+     if(t>=G.stepT){ G.stepT=t+stepMs(); step(t); }
+   }else if(G.state==="crash"&&t>=G.phaseT){
+     if(G.spares<=0)gameOver("CRASH");
+     else{ G.grid=emptyGrid(); G.lastFree=[0,1,2]; G.state="play"; G.stepT=t+700; }
+   }
+ }
+ render(t);
+}
+
+/* ================= RENDER ================= */
+function render(t){
+ var slowBlink=Math.floor(t/500)%2===0;
+ var blink=Math.floor(t/110)%2===0;
+
+ if(G.mode==="calc"){
+   applyOn({}); setSpares(0); setGauge(0,false);
+   el("lap").textContent=""; el("flash").textContent="";
+   setMsg("","");
+   return; /* display was set by calcKey */
+ }
+
+ setDisplay(G.state==="title"?String(G.hi):String(G.score));
+
+ var playing=G.state!=="title";
+ setSpares(playing?G.spares:0);
+ el("lap").textContent=playing?("LAP "+G.lap):"";
+ el("flash").textContent=(playing&&G.flashT>t)?G.flash:"";
+ setGauge(playing?Math.ceil(G.fuel/100):0,(G.fuel>=200||blink));
+
+ if(G.state==="title")setMsg("RACING",slowBlink?"PUSH AC KEY":"");
+ else if(G.state==="crash")setMsg(blink?"CRASH!":"","");
+ else if(G.state==="over")setMsg("GAME OVER",slowBlink?"PUSH AC KEY":(G.over==="GAS"?"OUT OF GAS":"HI "+G.hi));
+ else setMsg("","");
+
+ /* sprites */
+ var on={},r,l;
+ if(playing){
+   for(r=0;r<NROW;r++)for(l=0;l<3;l++){
+     var v=G.grid[r][l];
+     if(v===1)on["C"+r+l]=1;
+     else if(v===2)on["F"+r+l]=1;
+   }
+ }
+ if(G.state==="crash"){
+   if(blink)on["B"+G.crashLane]=1;
+ }else if(G.state!=="title"){
+   on["P"+G.lane]=1;
+ }else{
+   if(slowBlink)on["P1"]=1;
+ }
+ applyOn(on);
+}
+
+/* ================= INPUT ================= */
+function press(k){
+ ac(); /* unlock audio on first gesture */
+ if(k==="MODE"){
+   G.mode=G.mode==="game"?"calc":"game";
+   $("#modeLabel").textContent=G.mode==="game"?"Game Mode":"Calculator";
+   SND.key();
+   if(G.mode==="calc")setDisplay(calc.cur);
+   else G.state="title";
+   return;
+ }
+ if(G.mode==="calc"){calcKey(k);return;}
+ /* game mode */
+ if(k==="AC"){
+   SND.key();
+   if(G.state==="title"||G.state==="over")startGame();
+   else G.state="title";
+   return;
+ }
+ if(k==="1"||k==="2"||k==="3"){
+   if(G.state==="play")moveTo(parseInt(k,10)-1);
+   else SND.key();
+   return;
+ }
+ SND.key();
+}
+function tap(k){
+ var btn=document.querySelector('.key[data-k="'+k+'"]');
+ if(btn){btn.classList.add("pressed");setTimeout(function(){btn.classList.remove("pressed");},110);}
+ press(k);
+}
+
+document.querySelectorAll(".key").forEach(function(btn){
+ btn.addEventListener("pointerdown",function(ev){
+   ev.preventDefault();
+   btn.classList.add("pressed");
+   press(btn.getAttribute("data-k"));
+ });
+ ["pointerup","pointerleave","pointercancel"].forEach(function(evn){
+   btn.addEventListener(evn,function(){btn.classList.remove("pressed");});
+ });
+ btn.addEventListener("keydown",function(ev){
+   if(ev.key==="Enter"||ev.key===" "){ev.preventDefault();press(btn.getAttribute("data-k"));}
+ });
+});
+
+var KEYMAP={
+ "0":"0","1":"1","2":"2","3":"3","4":"4","5":"5","6":"6","7":"7","8":"8","9":"9",
+ ".":".","+":"+","-":"-","*":"*","/":"/","%":"%","=":"=","Enter":"=",
+ "a":"AC","Escape":"AC","m":"MODE"
+};
+document.addEventListener("keydown",function(ev){
+ if(ev.repeat)return;
+ if(ev.target&&ev.target.classList&&ev.target.classList.contains("key"))return;
+ if(G.mode==="game"&&(ev.key==="ArrowLeft"||ev.key==="ArrowRight")){
+   ev.preventDefault();
+   var l=G.lane+(ev.key==="ArrowLeft"?-1:1);
+   if(l>=0&&l<=2)tap(String(l+1));
+   return;
+ }
+ var k=KEYMAP[ev.key]||KEYMAP[ev.key.toLowerCase()];
+ if(!k)return;
+ tap(k);
+});
+
+/* boot — rAF for smoothness, interval as fallback when rAF is throttled */
+setDisplay(String(G.hi));
+G.grid=emptyGrid();
+(function loop(){ tick(); requestAnimationFrame(loop); })();
+setInterval(tick,120);
+})();
+</script>
